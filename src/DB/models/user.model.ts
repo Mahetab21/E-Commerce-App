@@ -1,7 +1,8 @@
-import { MongooseModule, Prop, Schema, Virtual } from '@nestjs/mongoose';
+import { MongooseModule, Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { UserGender, UserProvider, UserRole } from 'src/common/enums';
-import { SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import type { HOtpDocument } from './otp.model';
+import { Hash } from 'src/common/utilits/hash';
 @Schema({
   timestamps: true,
   toJSON: { virtuals: true },
@@ -11,35 +12,24 @@ import { HydratedDocument } from 'mongoose';
 export class User {
   @Prop({
     type: String,
-    required: false,
+    required: true,
     minLength: 2,
     maxLength: 30,
     trim: true,
   })
-  firstName?: string;
+  firstName: string;
 
   @Prop({
     type: String,
-    required: false,
+    required: true,
     minLength: 2,
     maxLength: 30,
     trim: true,
   })
-  lastName?: string;
+  lastName: string;
 
-  @Virtual({
-    get() {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      return `${this.firstName} ${this.lastName}`;
-    },
-    set(value) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-      this.firstName = value.split(' ')[0];
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-      this.lastName = value.split(' ')[1];
-    },
-  })
-  userName: string;
+  // userName will be defined as a virtual on the schema
+  userName?: string;
 
   @Prop({
     type: String,
@@ -59,9 +49,9 @@ export class User {
     type: Number,
     min: 18,
     max: 100,
-    required: false,
+    required: true,
   })
-  age?: number;
+  age: number;
   @Prop({
     type: String,
     enum: UserRole,
@@ -90,10 +80,7 @@ export class User {
     default: Date.now,
   })
   changeCredentials: Date;
-  @Prop({
-    type: String,
-  })
-  otp: string;
+
   @Prop({
     default: false,
   })
@@ -102,12 +89,42 @@ export class User {
     type: Date,
   })
   otpExpires: Date;
+
+  // otp will be defined as a virtual on the schema
+  otp?: HOtpDocument;
 }
 export const UserSchema = SchemaFactory.createForClass(User);
 export type HUserDocument = HydratedDocument<User>;
-// export const UserModel = [
-//   MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
-// ];
+
+// Add virtuals
+UserSchema.virtual('userName')
+  .get(function () {
+    return `${this.firstName} ${this.lastName}`;
+  })
+  .set(function (value: string) {
+    const [firstName, lastName] = value.split(' ');
+    this.firstName = firstName;
+    this.lastName = lastName;
+  });
+
+UserSchema.virtual('otp', {
+  ref: 'Otp',
+  localField: '_id',
+  foreignField: 'createdBy',
+  justOne: true,
+});
+
+// Add pre-save middleware for password hashing
+UserSchema.pre('save', async function (next) {
+  if (this.isModified('password')) {
+    this.password = await Hash(this.password);
+  }
+  next();
+});
+
 export const UserModel = MongooseModule.forFeature([
-  { name: User.name, schema: UserSchema },
+  {
+    name: User.name,
+    schema: UserSchema,
+  },
 ]);

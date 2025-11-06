@@ -1,11 +1,12 @@
-import { IsEmail, IsNotEmpty, Length } from 'class-validator';
-
-export class VerifyEmailDto {
+import { IsEmail, IsNotEmpty, Length, Matches } from 'class-validator';
+export class resendOtpDto {
   @IsNotEmpty()
   @IsEmail()
   email: string;
-
+}
+export class VerifyEmailDto extends resendOtpDto {
   @IsNotEmpty()
   @Length(6, 6)
-  otp: string;
+  @Matches(/^\d{6}$/)
+  code: string;
 }

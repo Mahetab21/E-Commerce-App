@@ -2,12 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { DBRepository } from './db.repo';
 import { Model } from 'mongoose';
 import { InjectModel } from '@nestjs/mongoose';
-import { User } from '../models';
+import { Otp } from '../models';
 @Injectable()
-export class OtpRepository extends DBRepository<User> {
+export class OtpRepository extends DBRepository<Otp> {
   constructor(
-    @InjectModel(User.name)
-    protected override readonly model: Model<User>,
+    @InjectModel(Otp.name)
+    protected override readonly model: Model<Otp>,
   ) {
     super(model);
   }

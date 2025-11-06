@@ -1,15 +1,14 @@
 import { Module } from '@nestjs/common';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
-import { UserModel, UserRepository } from 'src/DB';
-import { EmailModule } from 'src/common/services/email.module';
-import { JwtModule } from '@nestjs/jwt';
-import { EmailService } from 'src/common/services/email.service';
+import { OtpModel, OtpRepository, UserModel, UserRepository } from 'src/DB';
+import { JwtModule, JwtService } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TokenService } from 'src/common/services';
 @Module({
   imports: [
     UserModel,
-    EmailModule,
+    OtpModel,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -20,7 +19,21 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     }),
   ],
   controllers: [UserController],
-  providers: [UserService, UserRepository, EmailService, ConfigService],
+  providers: [
+    UserService,
+    UserRepository,
+    ConfigService,
+    OtpRepository,
+    JwtService,
+    TokenService,
+  ],
   exports: [],
 })
-export class UserModule {}
+export class UserModule {
+  // configure(consumer: MiddlewareConsumer) {
+  //   consumer
+  //     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call
+  //     .apply(tokenType(), AuthenticationMiddleware)
+  //     .forRoutes('users/*demo');
+  // }
+}

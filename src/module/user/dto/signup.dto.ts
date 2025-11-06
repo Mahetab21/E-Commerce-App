@@ -1,7 +1,9 @@
 import {
   IsEmail,
+  IsEnum,
   IsNotEmpty,
   IsNumber,
+  IsOptional,
   IsString,
   IsStrongPassword,
   Length,
@@ -10,15 +12,18 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { IsMatch } from '../../../common/decorators/user.decorator';
-export class AddUserDto {
+import { UserGender } from 'src/common/enums/user.enum';
+export class signUpDTO {
   @IsString()
   @Length(2, 30)
   @IsNotEmpty()
+  @ValidateIf((data: signUpDTO) => Boolean(!data.userName))
   firstName: string;
 
   @IsString()
   @Length(2, 30)
   @IsNotEmpty()
+  @ValidateIf((data: signUpDTO) => Boolean(!data.userName))
   lastName: string;
 
   @IsNotEmpty()
@@ -31,13 +36,22 @@ export class AddUserDto {
   @Max(100)
   age: number;
 
+  @IsString()
+  @Length(2, 30)
+  @IsNotEmpty()
+  @ValidateIf((data: signUpDTO) => Boolean(!data.firstName && !data.lastName))
+  userName: string;
+
   @IsStrongPassword()
   @IsNotEmpty()
   password: string;
 
   @IsMatch(['password'])
-  @ValidateIf((data: AddUserDto) => {
+  @ValidateIf((data: signUpDTO) => {
     return Boolean(data.password);
   })
   confirmPassword: string;
+  @IsEnum(UserGender)
+  @IsOptional()
+  gender?: UserGender;
 }
