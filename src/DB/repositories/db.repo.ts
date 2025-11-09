@@ -39,12 +39,17 @@ export class DBRepository<TDocument> {
   ): Promise<UpdateWriteOpResult> {
     return await this.model.updateOne(filter, updated);
   }
-  async findOneAndUpdate(
-    filter: RootFilterQuery<TDocument>,
-    updated: UpdateQuery<TDocument>,
-    options: QueryOptions<TDocument> | null = { new: true },
-  ): Promise<HydratedDocument<TDocument> | null> {
-    return await this.model.findOneAndUpdate(filter, updated, options);
+  async findOneAndUpdate({
+    filter,
+    update,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    options,
+  }: {
+    filter: RootFilterQuery<TDocument>;
+    update: UpdateQuery<TDocument>;
+    options?: QueryOptions<TDocument>;
+  }): Promise<HydratedDocument<TDocument> | null> {
+    return await this.model.findOneAndUpdate(filter, update, { new: true });
   }
   async deleteOne(filter: RootFilterQuery<TDocument>): Promise<DeleteResult> {
     return await this.model.deleteOne(filter);
@@ -52,17 +57,16 @@ export class DBRepository<TDocument> {
   async paginate({
     filter,
     query,
-    select,
+    projection,
     options,
   }: {
     filter: RootFilterQuery<TDocument>;
     query: { page: number; limit: number };
-    select?: ProjectionType<TDocument>;
+    projection?: ProjectionType<TDocument>;
     options?: QueryOptions<TDocument>;
   }) {
-    let { page = 1, limit = 10 } = query;
-    page = +page || 1;
-    limit = +limit || 10;
+    // eslint-disable-next-line prefer-const
+    let { page, limit = 2 } = query;
 
     if (page < 0) page = 1;
     page = page * 1 || 1;
@@ -76,7 +80,7 @@ export class DBRepository<TDocument> {
       deletedAt: { $exists: false },
     });
     const numberOfPages = Math.ceil(count / limit);
-    const docs = await this.model.find(filter, select, finalOptions);
+    const docs = await this.model.find(filter, projection, finalOptions);
     return { docs, currentPage: page, countDocument: count, numberOfPages };
   }
   async findOneAndDelete(

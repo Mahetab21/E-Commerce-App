@@ -1,9 +1,9 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { JwtService, JwtSignOptions, JwtVerifyOptions } from '@nestjs/jwt';
 import { JwtPayload } from 'jsonwebtoken';
 import { TokenTypeEnum } from 'src/common/enums';
 import { UserRepository } from 'src/DB';
-
+@Injectable()
 export class TokenService {
   constructor(
     private readonly jwtService: JwtService,

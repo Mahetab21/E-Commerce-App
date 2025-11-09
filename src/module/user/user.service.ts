@@ -15,18 +15,18 @@ import { signUpDTO } from './dto/signup.dto';
 // import { UserProvider } from 'src/common/enums';
 import { eventEmitter } from 'src/common/utilits/email.event';
 import { generateOtp } from 'src/common/services/email/email.service';
-import { OtpRepository, UserRepository } from 'src/DB';
+import { HUserDocument, OtpRepository, UserRepository } from 'src/DB';
 import { OtpEnumType, UserGender, UserRole } from 'src/common/enums';
 import { resendOtpDto } from './dto/verify_email.dto';
 import { Types } from 'mongoose';
 import { SignInDto } from './dto/login.dto';
-import { TokenService } from 'src/common/services';
+import { S3Service, TokenService } from 'src/common/services';
 @Injectable()
 export class UserService {
   constructor(
     private userRepository: UserRepository,
     private otpRepository: OtpRepository,
-
+    private readonly s3Service: S3Service,
     private readonly tokenService: TokenService,
     private readonly configService: ConfigService,
   ) {}
@@ -168,6 +168,14 @@ export class UserService {
       access_token,
       refresh_token,
     };
+  }
+  //==================== upload file ====================
+  uploadFile(file: Express.Multer.File, user: HUserDocument) {
+    return this.s3Service.uploadFile({
+      file,
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      path: `users/${user._id}`,
+    });
   }
   //==================== forget Password ====================
   // async forgetPassword({ email }: ForgotPasswordDto) {

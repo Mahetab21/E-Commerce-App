@@ -1,4 +1,12 @@
-import { Body, Controller, Post, Patch, Get } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  Patch,
+  Get,
+  UseInterceptors,
+  UploadedFiles,
+} from '@nestjs/common';
 import { UserService } from './user.service';
 import { signUpDTO } from './dto/signup.dto';
 import { resendOtpDto } from './dto/verify_email.dto';
@@ -8,6 +16,9 @@ import { SignInDto } from './dto/login.dto';
 // import { GoogleOAuthDto } from './dto/google-oauth.dto';
 import { Auth, User } from 'src/common/decorators';
 import type { HUserDocument } from 'src/DB/models/user.model';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { fileValidation, multerCloud } from 'src/common/utilits/multer';
+import { storageType } from 'src/common/enums/multer.enum';
 @Controller('user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
@@ -33,6 +44,24 @@ export class UserController {
   getProfile(@User() user: HUserDocument) {
     return { message: 'Profile fetched successfully', user };
   }
+  @Post('upload')
+  @UseInterceptors(
+    FileInterceptor(
+      'attachment',
+      multerCloud({
+        fileTypes: fileValidation.image,
+        storeType: storageType.memory,
+      }),
+    ),
+  )
+  async uploadFile(
+    @UploadedFiles() file: Express.Multer.File,
+    @User() user: HUserDocument,
+  ) {
+    const url = await this.userService.uploadFile(file, user);
+    return { message: 'file uploaded successfully', url };
+  }
+
   // @Patch('forgotPassword')
   // async forgotPassword(@Body() dto: ForgotPasswordDto) {
   //   return this.userService.forgetPassword(dto);

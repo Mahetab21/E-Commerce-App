@@ -21,6 +21,7 @@ export class AuthorizationGuard implements CanActivate {
         ROLE_KEY,
         context.getHandler(),
       );
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
       if (!access_roles.includes(req.user.role)) {
         throw new UnauthorizedException();
       }

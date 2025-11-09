@@ -6,7 +6,11 @@ import { UserModule } from './module/user/user.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
 import { AuthModule } from './module/auth/auth.module';
-
+import { S3Service } from './common/services';
+import { BrandModule } from './module/brand/brand.module';
+import { CategoryModule } from './module/category/category.module';
+import { subCategoryModule } from './module/subCategory/subCategory.module';
+import { ProductModule } from './module/Product/product.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -23,8 +27,12 @@ import { AuthModule } from './module/auth/auth.module';
     }),
     UserModule,
     AuthModule,
+    BrandModule,
+    CategoryModule,
+    subCategoryModule,
+    ProductModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, S3Service],
 })
 export class AppModule {}
