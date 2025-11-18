@@ -11,6 +11,8 @@ import { BrandModule } from './module/brand/brand.module';
 import { CategoryModule } from './module/category/category.module';
 import { subCategoryModule } from './module/subCategory/subCategory.module';
 import { ProductModule } from './module/Product/product.module';
+import { CartModule } from './module/Cart/cart.module';
+import { CouponModule } from './module/Coupon/coupon.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -31,6 +33,8 @@ import { ProductModule } from './module/Product/product.module';
     CategoryModule,
     subCategoryModule,
     ProductModule,
+    CartModule,
+    CouponModule,
   ],
   controllers: [AppController],
   providers: [AppService, S3Service],

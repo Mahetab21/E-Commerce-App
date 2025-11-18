@@ -43,7 +43,7 @@ export class Category {
   @Prop({ type: String, required: true })
   assetFolderId: string;
 
-  @Prop({ type: [{ type: Types.ObjectId, ref: 'Brand' }], default: [] })
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'Brand' }] })
   brands: Types.ObjectId[];
 
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })

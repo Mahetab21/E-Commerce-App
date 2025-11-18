@@ -1,6 +1,34 @@
 import { MongooseModule, Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types, UpdateQuery } from 'mongoose';
 import slugify from 'slugify';
+
+@Schema({ _id: false })
+export class ProductVariant {
+  @Prop({ type: String, required: true })
+  size: string;
+
+  @Prop({ type: String, required: true })
+  color: string;
+
+  @Prop({ type: Number, required: true, min: 0 })
+  price: number;
+
+  @Prop({ type: Number, required: true, min: 0 })
+  stock: number;
+
+  @Prop({ type: String, required: true, unique: true })
+  sku: string;
+
+  @Prop({ type: [String], default: [] })
+  images: string[];
+
+  @Prop({ type: Number, min: 0, max: 100, default: 0 })
+  discount: number;
+}
+
+export const ProductVariantSchema =
+  SchemaFactory.createForClass(ProductVariant);
+
 @Schema({
   timestamps: true,
   toJSON: { virtuals: true },
@@ -70,6 +98,9 @@ export class Product {
   @Prop({ type: Types.ObjectId, ref: 'SupCategory', required: true })
   subCategory: Types.ObjectId;
 
+  @Prop({ type: [ProductVariantSchema], default: [] })
+  variants: ProductVariant[];
+
   @Prop({ type: Types.ObjectId, ref: 'User' })
   updatedBy: Types.ObjectId;
 
@@ -78,6 +109,9 @@ export class Product {
 
   @Prop({ type: Date })
   restoredAt: Date;
+
+  @Prop({ type: String, required: true })
+  assetFolderId: string;
 }
 export type HProductDocument = HydratedDocument<Product>;
 export const ProductSchema = SchemaFactory.createForClass(Product);
