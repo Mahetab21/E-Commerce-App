@@ -7,12 +7,15 @@ import { CreateBrandDto, QueryDto, UpdateBrandDto } from './brand.dto';
 import { BrandRepository, HUserDocument } from 'src/DB';
 import { S3Service } from 'src/common/services/s3.service';
 import { Types } from 'mongoose';
-
+import { Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 @Injectable()
 export class BrandService {
   constructor(
     private readonly brandRepository: BrandRepository,
     private readonly s3Service: S3Service,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
   //=================== Create Brand ===================
   async createBrand(
@@ -87,7 +90,7 @@ export class BrandService {
       file,
     });
     const updatedBrand = await this.brandRepository.findOneAndUpdate({
-      filter: { _id: id },
+      filter: { _id: id, createdBy: user._id },
       update: { image: url },
     });
     if (!updatedBrand) {
@@ -104,7 +107,7 @@ export class BrandService {
   //=================== Freeze Brand ===================
   async freezeBrand(id: Types.ObjectId, user: HUserDocument) {
     const brand = await this.brandRepository.findOneAndUpdate({
-      filter: { _id: id, deletedAt: { $exists: false } },
+      filter: { _id: id, createdBy: user._id, deletedAt: { $exists: false } },
       update: { deletedAt: new Date(), updatedBy: user._id },
     });
     if (!brand) {
@@ -114,6 +117,7 @@ export class BrandService {
   }
   //=================== restore Brand ===================
   async restoreBrand(id: Types.ObjectId, user: HUserDocument) {
+    //we wrirte paranois: true to arrive to middleware of findOneAndUpdate in the repository to check if the document is frozen or not
     const brand = await this.brandRepository.findOneAndUpdate({
       filter: { _id: id, deletedAt: { $exists: true }, paranoid: false },
       update: {
@@ -128,9 +132,14 @@ export class BrandService {
     return brand;
   }
   //=================== Delete Brand ===================
-  async deleteBrand(id: Types.ObjectId) {
+  async deleteBrand(id: Types.ObjectId, user: HUserDocument) {
     const brand = await this.brandRepository.findOneAndDelete({
-      filter: { _id: id, paranoid: false, deletedAt: { $exists: true } },
+      filter: {
+        _id: id,
+        createdBy: user._id,
+        paranoid: false,
+        deletedAt: { $exists: true },
+      },
     });
     if (!brand) {
       throw new NotFoundException('Brand not found or already deleted');
@@ -157,6 +166,9 @@ export class BrandService {
         },
         query: { page, limit },
       });
-    return { message: 'Done', currentPage, countDocument, numberOfPages, docs };
+    return { currentPage, countDocument, numberOfPages, docs };
   }
+  //=================== cash ===============
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async cash(query: QueryDto) {}
 }

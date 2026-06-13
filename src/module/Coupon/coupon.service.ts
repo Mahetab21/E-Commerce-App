@@ -16,7 +16,7 @@ export class CouponService {
   ) {}
   //=================== Create Coupon ===================
   async createCoupon(body: CreateCouponDto, user: HUserDocument) {
-    const { code, amount, fromDate, toDate } = body;
+    const { code, amount, fromDate, toDate }: CreateCouponDto = body;
     const couponExist = await this.CouponRepository.findOne({
       filter: { code: code.toLowerCase() },
     });
@@ -24,7 +24,7 @@ export class CouponService {
       throw new ConflictException('Coupon code already exists');
     }
     const newCoupon = await this.CouponRepository.create({
-      code,
+      code: code.toLowerCase(),
       amount,
       fromDate,
       toDate,

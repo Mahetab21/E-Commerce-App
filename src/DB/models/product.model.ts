@@ -2,7 +2,7 @@ import { MongooseModule, Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types, UpdateQuery } from 'mongoose';
 import slugify from 'slugify';
 
-@Schema({ _id: false })
+@Schema({ _id: false }) // to prevent creating a separate _id for each variant
 export class ProductVariant {
   @Prop({ type: String, required: true })
   size: string;
@@ -57,13 +57,12 @@ export class Product {
 
   @Prop({
     required: true,
-    unique: true,
     type: String,
     trim: true,
     minLength: 2,
     maxLength: 100000,
   })
-  discription: string;
+  description: string;
 
   @Prop({ type: String, required: true })
   mainImage: string;
@@ -95,7 +94,7 @@ export class Product {
   @Prop({ type: Types.ObjectId, ref: 'Category', required: true })
   category: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'SupCategory', required: true })
+  @Prop({ type: Types.ObjectId, ref: 'SubCategory', required: true })
   subCategory: Types.ObjectId;
 
   @Prop({ type: [ProductVariantSchema], default: [] })

@@ -27,7 +27,7 @@ export class CartController {
     tokenType: TokenTypeEnum.access,
   })
   async removeProductFromCart(
-    @Param('id') param: paramDto,
+    @Param() param: paramDto,
     @User() user: HUserDocument,
   ) {
     const Cart = await this.CartService.removeProductFromCart(param.id, user);

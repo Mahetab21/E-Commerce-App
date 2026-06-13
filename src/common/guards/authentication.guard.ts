@@ -24,12 +24,23 @@ export class AuthenticationGuard implements CanActivate {
       req = context.switchToHttp().getRequest();
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       authorization = req.headers.authorization;
+    } else if (context.getType() === 'ws') {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      req = context.switchToWs().getClient();
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+      authorization = req.handshake.headers.authorization;
+    } else if (context.getType() === 'rpc') {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      req = context.switchToRpc().getData();
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+      authorization = req.headers?.authorization || '';
     }
     try {
       const [prefix, token] = authorization?.split(' ') || [];
       if (!token || !prefix) {
         throw new BadRequestException('Invalid Token');
       }
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       const signature = await this.tokenService.GetSignature(prefix, typeToken);
       if (!signature) {
         throw new BadRequestException('Invalid signature');

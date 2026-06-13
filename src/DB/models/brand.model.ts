@@ -54,6 +54,7 @@ export class Brand {
 }
 export type HBrandDocument = HydratedDocument<Brand>;
 export const BrandSchema = SchemaFactory.createForClass(Brand);
+//pre-save hook to generate slug from name if name is modified
 BrandSchema.pre(['updateOne', 'findOneAndUpdate'], function (next) {
   const update = this.getUpdate() as UpdateQuery<Brand>;
   if (update.name) {
@@ -66,6 +67,7 @@ BrandSchema.pre(['updateOne', 'findOneAndUpdate'], function (next) {
   }
   next();
 });
+//pre-find hook to exclude soft-deleted documents by default, unless paranoid is set to false
 BrandSchema.pre(['findOne', 'find', 'findOneAndUpdate'], function (next) {
   const { paranoid, ...rest } = this.getQuery();
   if (paranoid === false) {

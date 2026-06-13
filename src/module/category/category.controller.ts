@@ -134,7 +134,15 @@ export class CategoryController {
   //----------- get all Categories -----------
   @Get()
   async getAllCategories(@Query() query: QueryDto) {
-    const Categories = await this.CategoryService.getAllCategories(query);
-    return { message: 'Done', Categories };
+    const { docs, currentPage, countDocument, numberOfPages } =
+      await this.CategoryService.getAllCategories(query);
+
+    return {
+      message: 'Done',
+      currentPage,
+      countDocument,
+      numberOfPages,
+      Categories: docs,
+    };
   }
 }

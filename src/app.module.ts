@@ -13,10 +13,16 @@ import { subCategoryModule } from './module/subCategory/subCategory.module';
 import { ProductModule } from './module/Product/product.module';
 import { CartModule } from './module/Cart/cart.module';
 import { CouponModule } from './module/Coupon/coupon.module';
+import { OrderModule } from './module/order/order.module';
+import { GatewayModule } from './module/gateway/gateway.module';
+import { CacheModule } from '@nestjs/cache-manager';
 @Module({
   imports: [
     ConfigModule.forRoot({
       envFilePath: 'config/.env',
+      isGlobal: true,
+    }),
+    CacheModule.register({
       isGlobal: true,
     }),
     MongooseModule.forRoot(process.env.MONGO_URI as string, {
@@ -27,6 +33,7 @@ import { CouponModule } from './module/Coupon/coupon.module';
         return connection;
       },
     }),
+    GatewayModule,
     UserModule,
     AuthModule,
     BrandModule,
@@ -35,6 +42,7 @@ import { CouponModule } from './module/Coupon/coupon.module';
     ProductModule,
     CartModule,
     CouponModule,
+    OrderModule,
   ],
   controllers: [AppController],
   providers: [AppService, S3Service],

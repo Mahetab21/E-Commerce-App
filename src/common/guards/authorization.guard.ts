@@ -16,7 +16,7 @@ export class AuthorizationGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     try {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const req = context.switchToHttp().getRequest();
+      const req = context.switchToHttp().getRequest(); // Assuming this guard is used in an HTTP context
       const access_roles: UserRole[] = this.reflector.get(
         ROLE_KEY,
         context.getHandler(),

@@ -12,15 +12,24 @@ import {
   BrandRepository,
   ProductModel,
   ProductRepository,
+  SubCategoryRepository,
+  subCategoryModel,
 } from 'src/DB';
 @Module({
-  imports: [UserModel, BrandModel, CategoryModel, ProductModel],
+  imports: [
+    UserModel,
+    BrandModel,
+    CategoryModel,
+    ProductModel,
+    subCategoryModel,
+  ],
   controllers: [ProductController],
   providers: [
     ProductService,
     ProductRepository,
     BrandRepository,
     CategoryRepository,
+    SubCategoryRepository,
     UserRepository,
     S3Service,
     TokenService,

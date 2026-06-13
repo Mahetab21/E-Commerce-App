@@ -5,16 +5,16 @@ import {
 } from 'class-validator';
 
 export function AtLeastOne(
-  RequireFields: string[],
-  validationOptions?: ValidationOptions,
+  RequireFields: string[], //['name', 'slogan']
+  validationOptions?: ValidationOptions, //{ message: 'At least one of the following fields must be provided: name, slogan' }
 ) {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
   return function (constructor: Function) {
     registerDecorator({
-      target: constructor,
-      propertyName: '',
+      target: constructor, //the class being decorated
+      propertyName: '', //empty because we are validating the whole object, not a specific property
       options: validationOptions,
-      constraints: RequireFields,
+      constraints: RequireFields, //['name', 'slogan']
       validator: {
         validate(value: string, args: ValidationArguments) {
           return RequireFields.some((field) => args.object[field]);

@@ -12,7 +12,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { IsMatch } from '../../../common/decorators/user.decorator';
-import { UserGender } from 'src/common/enums/user.enum';
+import { UserGender, UserRole } from 'src/common/enums/user.enum';
 export class signUpDTO {
   @IsString()
   @Length(2, 30)
@@ -54,4 +54,8 @@ export class signUpDTO {
   @IsEnum(UserGender)
   @IsOptional()
   gender?: UserGender;
+
+  @IsEnum(UserRole)
+  @IsOptional()
+  role?: UserRole;
 }

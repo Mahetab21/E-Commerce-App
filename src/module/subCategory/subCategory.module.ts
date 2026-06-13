@@ -8,8 +8,8 @@ import {
   UserRepository,
   BrandModel,
   subCategoryModel,
-  subCategoryRepository,
   BrandRepository,
+  SubCategoryRepository,
 } from 'src/DB';
 @Module({
   imports: [UserModel, BrandModel, subCategoryModel],
@@ -19,7 +19,7 @@ import {
     TokenService,
     JwtService,
     UserRepository,
-    subCategoryRepository,
+    SubCategoryRepository,
     S3Service,
     BrandRepository,
   ],

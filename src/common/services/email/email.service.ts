@@ -15,7 +15,7 @@ export const sendEmail = async (mailOptions: Mail.Options) => {
 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
   const info = await transporter.sendMail({
-    from: `socialMediaApp <${process.env.EMAIL_USER}>`,
+    from: `E-commerce <${process.env.EMAIL_USER}>`,
     ...mailOptions,
   });
 

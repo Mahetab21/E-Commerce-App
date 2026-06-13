@@ -8,7 +8,7 @@ import {
   QueryDto,
   UpdatesubCategoryDto,
 } from './subCategory.dto';
-import { BrandRepository, subCategoryRepository } from 'src/DB';
+import { BrandRepository, SubCategoryRepository } from 'src/DB';
 import type { HUserDocument } from 'src/DB';
 import { S3Service } from 'src/common/services/s3.service';
 import { Types } from 'mongoose';
@@ -16,7 +16,7 @@ import { randomUUID } from 'crypto';
 @Injectable()
 export class subCategoryService {
   constructor(
-    private readonly subCategoryRepository: subCategoryRepository,
+    private readonly subCategoryRepository: SubCategoryRepository,
     private readonly s3Service: S3Service,
     private readonly BrandRepository: BrandRepository,
   ) {}
@@ -194,6 +194,6 @@ export class subCategoryService {
         },
         query: { page, limit },
       });
-    return { message: 'Done', currentPage, countDocument, numberOfPages, docs };
+    return { currentPage, countDocument, numberOfPages, docs };
   }
 }

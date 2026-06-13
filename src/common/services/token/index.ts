@@ -9,6 +9,7 @@ export class TokenService {
     private readonly jwtService: JwtService,
     private readonly UserRepo: UserRepository,
   ) {}
+  //function to generate token
   GenerateToken = async ({
     payload,
     options,
@@ -18,6 +19,7 @@ export class TokenService {
   }): Promise<string> => {
     return this.jwtService.signAsync(payload, options);
   };
+  //function to verify token
   VerifyToken = async ({
     token,
     options,
@@ -27,6 +29,7 @@ export class TokenService {
   }): Promise<JwtPayload> => {
     return this.jwtService.verifyAsync(token, options);
   };
+  //function to get signature based on token type and prefix
   // eslint-disable-next-line @typescript-eslint/require-await
   GetSignature = async (
     prefix: string,
@@ -50,6 +53,7 @@ export class TokenService {
       }
     }
   };
+  //function to decode token and fetch user
   decodedTokenAndFetchUser = async (token: string, signature: string) => {
     const decoded = await this.VerifyToken({
       token,

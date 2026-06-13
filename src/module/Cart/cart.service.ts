@@ -3,11 +3,13 @@ import { CartRepository, ProductRepository } from 'src/DB';
 import type { HUserDocument } from 'src/DB';
 import { CreateCartDto, updateQuantityDto } from './cart.dto';
 import { Types } from 'mongoose';
+import { SocketGateway } from '../gateway/socket.gateway';
 @Injectable()
 export class CartService {
   constructor(
     private readonly CartRepository: CartRepository,
     private readonly productRepository: ProductRepository,
+    private readonly SocketGateway: SocketGateway,
   ) {}
   //=================== Create Cart ===================
   async createCart(body: CreateCartDto, user: HUserDocument) {
@@ -44,6 +46,8 @@ export class CartService {
       quantity: quantity,
       finalPrice: product.price,
     });
+    //Notification
+    this.SocketGateway.handleProductQuantityChange(productId, quantity);
     await cart.save();
     return cart;
   }

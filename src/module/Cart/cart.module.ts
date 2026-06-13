@@ -11,6 +11,7 @@ import {
   ProductRepository,
 } from 'src/DB';
 import { JwtService } from '@nestjs/jwt';
+import { SocketGateway } from '../gateway/socket.gateway';
 @Module({
   imports: [UserModel, CartModel, ProductModel],
   controllers: [CartController],
@@ -21,6 +22,7 @@ import { JwtService } from '@nestjs/jwt';
     TokenService,
     ProductRepository,
     JwtService,
+    SocketGateway,
   ],
 })
 export class CartModule {}

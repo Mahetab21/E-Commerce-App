@@ -109,12 +109,12 @@ UserSchema.virtual('userName')
     this.firstName = firstName;
     this.lastName = lastName;
   });
-
+//virtual populate for otp
 UserSchema.virtual('otp', {
   ref: 'Otp',
   localField: '_id',
-  foreignField: 'createdBy',
-  justOne: true,
+  foreignField: 'createdBy', // Assuming 'createdBy' is the field in Otp that references User
+  justOne: true, //one-to-one relationship
 });
 
 // Add pre-save middleware for password hashing

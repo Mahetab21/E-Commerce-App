@@ -20,7 +20,7 @@ export class CreateBrandDto {
 
   @IsString()
   @MinLength(2)
-  @MaxLength(10)
+  @MaxLength(20)
   @IsNotEmpty()
   slogan: string;
 }
@@ -35,7 +35,7 @@ export class idDto {
 export class QueryDto {
   @IsNumber()
   @IsOptional()
-  @Type(() => Number)
+  @Type(() => Number) // to transform the query string to number
   page?: number;
 
   @IsNumber()

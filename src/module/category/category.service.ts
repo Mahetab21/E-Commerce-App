@@ -27,14 +27,14 @@ export class CategoryService {
     if (CategoryExists) {
       throw new ConflictException('Category with this name already exists');
     }
-    const strictId = [...new Set(brands || [])];
+    const strictId = [...new Set(brands || [])]; // Remove duplicates
     if (
       brands &&
       (
         await this.BrandRepository.find({
           filter: { _id: { $in: strictId } },
         })
-      ).length !== strictId.length
+      ).length !== strictId.length //
     ) {
       throw new NotFoundException('One or more brands not found');
     }
@@ -185,6 +185,6 @@ export class CategoryService {
         },
         query: { page, limit },
       });
-    return { message: 'Done', currentPage, countDocument, numberOfPages, docs };
+    return { currentPage, countDocument, numberOfPages, docs };
   }
 }

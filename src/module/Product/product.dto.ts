@@ -101,7 +101,7 @@ export class CreateProductDto {
   @MinLength(2)
   @MaxLength(100000)
   @IsNotEmpty()
-  discription: string;
+  description: string;
 
   @IsNumber()
   @IsNotEmpty()
@@ -139,7 +139,7 @@ export class CreateProductDto {
   @IsNotEmpty()
   subCategory: Types.ObjectId;
 
-  @ValidateNested({ each: true })
+  @ValidateNested({ each: true }) //for validating array of variants
   @Type(() => ProductVariantDto)
   @IsOptional()
   variants?: ProductVariantDto[];

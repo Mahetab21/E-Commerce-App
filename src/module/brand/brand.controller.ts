@@ -46,12 +46,12 @@ export class BrandController {
     role: [UserRole.ADMIN],
     tokenType: TokenTypeEnum.access,
   })
-  @UseInterceptors(
-    FileInterceptor(
-      'attachment',
-      multerCloud({ fileTypes: fileValidation.image }),
-    ),
-  )
+  // @UseInterceptors(
+  //   FileInterceptor(
+  //     'attachment',
+  //     multerCloud({ fileTypes: fileValidation.image }),
+  //   ),
+  // )
   @Patch('/update/:id')
   async updateBrand(
     @Param() params: idDto,
@@ -115,14 +115,13 @@ export class BrandController {
     tokenType: TokenTypeEnum.access,
   })
   @Delete('/delete/:id')
-  async deleteBrand(@Param() params: idDto) {
-    const brand = await this.brandService.deleteBrand(params.id);
+  async deleteBrand(@Param() params: idDto, @User() user: HUserDocument) {
+    const brand = await this.brandService.deleteBrand(params.id, user);
     return { message: 'Done', brand };
   }
   //----------- get all brands -----------
   @Get()
   async getAllBrands(@Query() query: QueryDto) {
-    const brands = await this.brandService.getAllBrands(query);
-    return { message: 'Done', brands };
+    return await this.brandService.getAllBrands(query);
   }
 }

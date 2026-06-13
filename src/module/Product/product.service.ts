@@ -18,7 +18,7 @@ import {
   CategoryRepository,
   UserRepository,
 } from 'src/DB';
-import type { HUserDocument } from 'src/DB';
+import { HUserDocument, SubCategoryRepository } from 'src/DB';
 import { S3Service } from 'src/common/services/s3.service';
 import { Types } from 'mongoose';
 @Injectable()
@@ -28,6 +28,7 @@ export class ProductService {
     private readonly s3Service: S3Service,
     private readonly brandRepository: BrandRepository,
     private readonly categoryRepository: CategoryRepository,
+    private readonly subCategoryRepository: SubCategoryRepository,
     private readonly userRepository: UserRepository,
   ) {}
   //=================== Create Product ===================
@@ -41,13 +42,14 @@ export class ProductService {
   ) {
     const {
       name,
-      discription,
+      description,
       discount,
       quantity,
       stock,
       brand,
       category,
       variants,
+      subCategory,
     } = productDto;
     let { price } = productDto;
     const brandExists = await this.brandRepository.findOne({ _id: brand });
@@ -59,6 +61,12 @@ export class ProductService {
     });
     if (!categoryExists) {
       throw new NotFoundException('category not found');
+    }
+    const subCategoryExists = await this.subCategoryRepository.findOne({
+      _id: subCategory,
+    });
+    if (!subCategoryExists) {
+      throw new NotFoundException('subCategory not found');
     }
     if (stock > quantity) {
       throw new BadRequestException('stock cannot be greater than quantity');
@@ -76,13 +84,15 @@ export class ProductService {
     });
     const product = await this.productRepository.create({
       name,
-      discription,
+      description,
       price,
       discount,
       quantity,
       stock,
       brand: Types.ObjectId.createFromHexString(brand.toString()),
       category: Types.ObjectId.createFromHexString(category.toString()),
+      subCategory: Types.ObjectId.createFromHexString(subCategory.toString()),
+      assetFolderId: subCategoryExists.assetFolderId,
       mainImage: mainImageUrl,
       subImage: subImagesUrls,
       variants: variants
@@ -103,7 +113,7 @@ export class ProductService {
     id: Types.ObjectId,
   ) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { name, discription, discount, quantity, stock, brand, category } =
+    const { name, description, discount, quantity, stock, brand, category } =
       productDto;
     let { price } = productDto;
     const product = await this.productRepository.findOne({ _id: id });
@@ -162,16 +172,18 @@ export class ProductService {
         $pull: {
           wishList: id,
         },
+        options: { new: true },
       },
     });
     if (!userExists) {
       userExists = await this.userRepository.findOneAndUpdate({
         filter: { _id: user._id },
         update: {
-          $push: {
+          $addToSet: {
             wishList: id,
           },
         },
+        options: { new: true },
       });
     }
     return userExists;
@@ -190,12 +202,13 @@ export class ProductService {
       throw new NotFoundException('Product not found');
     }
     const url = await this.s3Service.uploadFile({
-      path: `Categories/${Product.assetFolderId}`,
+      path: `Categories/.../Products/${Product.assetFolderId}/mainImage`,
       file,
     });
     const updatedProduct = await this.productRepository.findOneAndUpdate({
       filter: { _id: id },
-      update: { image: url },
+      update: { mainImage: url },
+      options: { new: true },
     });
     if (!updatedProduct) {
       await this.s3Service.deleteFile({
@@ -203,8 +216,8 @@ export class ProductService {
       });
       throw new ConflictException('Error updating Product image');
     }
-    await this.s3Service.deleteFiles({
-      urls: [Product.mainImage, ...Product.subImage],
+    await this.s3Service.deleteFile({
+      Key: Product.mainImage,
     });
     return updatedProduct;
   }
@@ -225,8 +238,9 @@ export class ProductService {
         },
         query: { page, limit },
       });
-    return { message: 'Done', currentPage, countDocument, numberOfPages, docs };
+    return { currentPage, countDocument, numberOfPages, docs };
   }
+  //*************** Product Variants Management ***************//
   //=================== Add Variant to Product ===================
   async addVariant(
     addVariantDto: AddVariantDto,

@@ -53,7 +53,7 @@ export class ProductController {
   async createProduct(
     @Body() productDto: CreateProductDto,
     @User() user: HUserDocument,
-    @UploadedFile(ParseFilePipe)
+    @UploadedFiles(ParseFilePipe)
     files: {
       mainImage: Express.Multer.File[];
       subImages: Express.Multer.File[];
@@ -124,7 +124,7 @@ export class ProductController {
     const Products = await this.ProductService.getAllProducts(query);
     return { message: 'Done', Products };
   }
-
+  //*************** Product Variants Management ***************//
   //----------- Add Variant to Product -----------
   @Auth({
     role: [UserRole.ADMIN],

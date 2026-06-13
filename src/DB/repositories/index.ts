@@ -7,3 +7,4 @@ export * from './product.repo';
 export * from './subCategory.repo';
 export * from './cart.repo';
 export * from './coupon.repo';
+export * from './order.repo';

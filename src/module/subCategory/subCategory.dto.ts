@@ -7,10 +7,11 @@ import {
   MaxLength,
   MinLength,
   Validate,
+  IsArray,
 } from 'class-validator';
 import { PartialType } from '@nestjs/mapped-types';
 import { Types } from 'mongoose';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { AtLeastOne, IdsMongo } from 'src/common/decorators';
 export class CreatesubCategoryDto {
   @IsString()
@@ -21,10 +22,25 @@ export class CreatesubCategoryDto {
 
   @IsString()
   @MinLength(2)
-  @MaxLength(10)
+  @MaxLength(20)
   @IsNotEmpty()
   slogan: string;
-
+  //transform string to array if the input is string
+  @Transform(({ value }) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    if (!value) return value;
+    if (typeof value === 'string') {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        return JSON.parse(value);
+      } catch {
+        return value.split(',').map((id) => id.trim());
+      }
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return value;
+  })
+  @IsArray()
   @Validate(IdsMongo)
   @IsOptional()
   brands: Types.ObjectId[];
