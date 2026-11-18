@@ -10,14 +10,19 @@ describe('Stripe checkout retries', () => {
       const create = jest.fn().mockResolvedValue({ id: 'cs_example' });
       const service = new StripeService();
       (service as any).client = { checkout: { sessions: { create } } };
-      const params = { customer_email: 'customer@example.test', metadata: { orderId: 'order' } };
+      const params = {
+        customer_email: 'customer@example.test',
+        metadata: { orderId: 'order' },
+      };
       const clock = jest.spyOn(Date, 'now');
       clock.mockReturnValue(1700000000000);
       await service.createCheckoutSession(params, 'checkout-order');
       clock.mockReturnValue(1700000060000);
       await service.createCheckoutSession(params, 'checkout-order');
       expect(create.mock.calls[1]).toEqual(create.mock.calls[0]);
-      expect(create.mock.calls[0][1]).toEqual({ idempotencyKey: 'checkout-order' });
+      expect(create.mock.calls[0][1]).toEqual({
+        idempotencyKey: 'checkout-order',
+      });
     } finally {
       jest.restoreAllMocks();
       process.env = previous;

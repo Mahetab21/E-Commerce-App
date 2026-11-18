@@ -27,6 +27,12 @@ Take a backup and review existing records before deployment:
 
 ## Operational limits
 
+### Dependency maintenance
+
+CI checks production dependencies with `npm audit --omit=dev --audit-level=high`. Also run the full `npm audit` when maintaining the build and test tools. The current development dependency tree reports advisories through `picomatch`, `glob` and `minimatch` in Jest, the Nest CLI and linting tools. These development-only findings are not covered by the production audit gate; a green CI run does not mean the full dependency tree is advisory-free.
+
+Keep build/test tooling out of the deployed runtime: build with `npm ci`, then use `npm prune --omit=dev` before running `node dist/main`. Build only trusted source and do not pass untrusted glob patterns to development tools. Review upstream fixes and compatibility before major tooling upgrades; do not apply `npm audit fix --force` blindly.
+
 Transactions protect stock/coupon/cart updates, not remote Stripe or S3 calls. Stripe calls use order-scoped idempotency keys; payment and stock transitions use conditional updates. Reconcile provider state after prolonged outages.
 
 A pending refund does not release stock. Failed/cancelled asynchronous refunds need administrator reconciliation; notifications and a reconciliation dashboard are outside this repository's scope.
