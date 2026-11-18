@@ -25,7 +25,8 @@ export class StripeService {
         payment_method_types: ['card'],
         success_url: process.env.CHECKOUT_SUCCESS_URL,
         cancel_url: process.env.CHECKOUT_CANCEL_URL,
-        expires_at: Math.floor(Date.now() / 1000) + 1800,
+        // Keep retry parameters stable for the order's idempotency key.
+        // Stripe supplies the session expiry when it first creates the session.
       },
       { idempotencyKey: key },
     );

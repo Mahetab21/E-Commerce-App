@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { sendEmail } from './common/services/email/email.service';
 import { createConnection, Connection, Types } from 'mongoose';
 import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
@@ -152,7 +153,6 @@ integration('Commerce regression suite (MongoDB replica set)', () => {
     expect(await db.model('Otp').countDocuments({ createdBy: user._id })).toBe(
       1,
     );
-    const { sendEmail } = await import('./common/services/email/email.service');
     expect(sendEmail).toHaveBeenCalledTimes(1);
   });
   it('hashes a reset password, consumes its code and revokes old tokens', async () => {

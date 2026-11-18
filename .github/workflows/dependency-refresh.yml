@@ -1,0 +1,31 @@
+name: Prepare dependency update
+on:
+  push:
+    branches: ['codex/portfolio-review']
+permissions:
+  contents: read
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Resolve compatible security updates without running package scripts
+        run: npm audit fix --package-lock-only --ignore-scripts --no-fund || true
+      - name: Report remaining advisories and candidate manifests for review
+        run: |
+          npm audit --json > dependency-audit.json || true
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const zlib = require('node:zlib');
+          const audit = JSON.parse(fs.readFileSync('dependency-audit.json', 'utf8'));
+          console.log('AUDIT_SUMMARY=' + JSON.stringify(audit));
+          const candidate = {
+            package: fs.readFileSync('package.json', 'utf8'),
+            lock: fs.readFileSync('package-lock.json', 'utf8'),
+          };
+          console.log('CANDIDATE_GZIP_BASE64=' + zlib.gzipSync(JSON.stringify(candidate)).toString('base64'));
+          NODE

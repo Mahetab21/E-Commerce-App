@@ -4,7 +4,7 @@ A modular commerce backend built with **NestJS, TypeScript and MongoDB**, coveri
 
 [![CI](https://github.com/Mahetab21/E-Commerce-App/actions/workflows/ci.yml/badge.svg)](https://github.com/Mahetab21/E-Commerce-App/actions/workflows/ci.yml)
 
-**Author:** [Mahitab Ayman](https://github.com/Mahetab21) · Backend Developer
+**Author:** [Mahitab Ayman](https://github.com/Mahetab21) � Backend Developer
 
 This repository contains the API. It does not include a storefront or a hosted demo.
 
@@ -95,10 +95,10 @@ npm run start:prod
 | Feature        | Variables                                                                                                                                    |
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | Database       | `MONGO_URI` (replica set required for orders)                                                                                                |
-| Tokens         | `ACCESS_TOKEN_USER`, `ACCESS_TOKEN_ADMIN`, `REFRESH_TOKEN_USER`, `REFRESH_TOKEN_ADMIN` — four different secrets, at least 32 characters each |
+| Tokens         | `ACCESS_TOKEN_USER`, `ACCESS_TOKEN_ADMIN`, `REFRESH_TOKEN_USER`, `REFRESH_TOKEN_ADMIN` - four different secrets, at least 32 characters each |
 | Authorization  | `BEARER_USER=Bearer`, `BEARER_ADMIN=Admin`                                                                                                   |
-| Browser client | `CORS_ORIGINS` — comma-separated allowed origins                                                                                             |
-| Email          | `EMAIL_USER`, `EMAIL_PASSWORD` — Gmail address and application password                                                                      |
+| Browser client | `CORS_ORIGINS` - comma-separated allowed origins                                                                                             |
+| Email          | `EMAIL_USER`, `EMAIL_PASSWORD` - Gmail address and application password                                                                      |
 | Google sign-in | `WEB_CLIENT_ID`                                                                                                                              |
 | Images         | `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_BUCKET_NAME`, `APPLICATION_NAME`                                            |
 | Payments       | `STRIPE_API_KEY`, `STRIPE_WEBHOOK_SECRET`, `CHECKOUT_SUCCESS_URL`, `CHECKOUT_CANCEL_URL`                                                     |
@@ -132,7 +132,7 @@ Set the printed signing secret as `STRIPE_WEBHOOK_SECRET`. Use a Stripe **test-m
 - `checkout.session.async_payment_failed`
 - `refund.created` and `refund.updated`
 
-Payment is recorded by a verified webhook, never by the success-page redirect. Checkout uses the final stored order total in EGP minor units, including the applied coupon. Sessions expire after 30 minutes; expiration webhooks release reservations. Orders that never start Checkout remain pending and can be cancelled by an administrator.
+Payment is recorded by a verified webhook, never by the success-page redirect. Checkout uses the final stored order total in EGP minor units, including the applied coupon. Sessions use Stripe's default expiry; expiration webhooks release reservations. Orders that never start Checkout remain pending and can be cancelled by an administrator.
 
 ## Tests
 
