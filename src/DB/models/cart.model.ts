@@ -3,6 +3,7 @@ import { HydratedDocument, Types } from 'mongoose';
 
 @Schema({
   timestamps: true,
+  optimisticConcurrency: true,
   toJSON: { virtuals: true },
   toObject: { virtuals: true },
   strictQuery: true,
@@ -11,24 +12,30 @@ export class CartProduct {
   @Prop({ type: Types.ObjectId, ref: 'Product', required: true })
   productId: Types.ObjectId;
 
-  @Prop({ type: Number, required: true })
+  @Prop({
+    type: Number,
+    required: true,
+    min: 1,
+    validate: Number.isSafeInteger,
+  })
   quantity: number;
 
-  @Prop({ type: Number, required: true })
+  @Prop({ type: Number, required: true, min: 0 })
   finalPrice: number;
 }
 
 @Schema({
   timestamps: true,
+  optimisticConcurrency: true,
   toJSON: { virtuals: true },
   toObject: { virtuals: true },
   strictQuery: true,
 })
 export class Cart {
-  @Prop({ type: [CartProduct] })
+  @Prop({ type: [SchemaFactory.createForClass(CartProduct)], default: [] })
   products: CartProduct[];
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true, unique: true })
   createdBy: Types.ObjectId;
 
   @Prop({ type: Number })

@@ -2,6 +2,9 @@ import {
   IsMongoId,
   IsNotEmpty,
   IsNumber,
+  Max,
+  Min,
+  IsInt,
   IsOptional,
   IsString,
   MaxLength,
@@ -12,7 +15,7 @@ import {
 import { PartialType } from '@nestjs/mapped-types';
 import { Types } from 'mongoose';
 import { Type, Transform } from 'class-transformer';
-import { AtLeastOne, IdsMongo } from 'src/common/decorators';
+import { AtLeastOne, IdsMongo } from '../../common/decorators';
 export class CreatesubCategoryDto {
   @IsString()
   @MinLength(2)
@@ -58,12 +61,15 @@ export class idDto {
   id: Types.ObjectId;
 }
 export class QueryDto {
-  @IsNumber()
+  @IsInt()
+  @Min(1)
   @IsOptional()
   @Type(() => Number)
   page?: number;
 
-  @IsNumber()
+  @IsInt()
+  @Min(0)
+  @Max(99)
   @IsOptional()
   @Type(() => Number)
   limit?: number;

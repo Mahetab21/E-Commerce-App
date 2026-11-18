@@ -1,9 +1,20 @@
-import { Body, Controller, Param, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Param,
+  Patch,
+  Post,
+  Req,
+  Headers,
+  HttpCode,
+} from '@nestjs/common';
+import type { RawBodyRequest } from '@nestjs/common';
+import type { Request } from 'express';
 import { OrderService } from './order.service';
-import { Auth, User } from 'src/common/decorators';
-import { UserRole, TokenTypeEnum } from 'src/common/enums';
+import { Auth, User } from '../../common/decorators';
+import { UserRole, TokenTypeEnum } from '../../common/enums';
 import { CreateOrderDto, paramDto } from './order.dto';
-import type { HUserDocument } from 'src/DB';
+import type { HUserDocument } from '../../DB';
 @Controller('Order')
 export class OrderController {
   constructor(private readonly OrderService: OrderService) {}
@@ -33,8 +44,12 @@ export class OrderController {
     return this.OrderService.paymentWithStripe(params.id, user);
   }
   @Post('/webhook')
-  async webhook(@Body() body: any) {
-    await this.OrderService.webhook(body);
+  @HttpCode(200)
+  async webhook(
+    @Req() req: RawBodyRequest<Request>,
+    @Headers('stripe-signature') signature: string,
+  ) {
+    return this.OrderService.webhook(req.rawBody, signature);
   }
   @Auth({
     role: [UserRole.ADMIN],

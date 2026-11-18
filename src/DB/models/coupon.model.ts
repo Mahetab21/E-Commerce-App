@@ -18,7 +18,7 @@ export class Coupon {
   })
   code: string;
 
-  @Prop({ type: Number, required: true })
+  @Prop({ type: Number, required: true, min: 1, max: 99 })
   amount: number;
   @Prop({ type: Date, required: true })
   fromDate: Date;

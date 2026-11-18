@@ -1,47 +1,29 @@
 import {
-  ConnectedSocket,
-  MessageBody,
   OnGatewayConnection,
-  OnGatewayDisconnect,
-  SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
-import { Types } from 'mongoose';
 import { Server, Socket } from 'socket.io';
-import { Auth } from 'src/common/decorators';
-import { TokenTypeEnum, UserRole } from 'src/common/enums';
-@WebSocketGateway(80, {
-  namespace: '/socket',
-  cors: {
-    origin: '*',
-  },
-})
-export class SocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
-  constructor() {}
-  @WebSocketServer()
-  private io: Server;
-  @Auth({
-    role: [UserRole.USER],
-    tokenType: TokenTypeEnum.access,
-  })
-  @SubscribeMessage('sayhi')
-  handleSayHiEvent(
-    @MessageBody() data: any,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    @ConnectedSocket() socket: Socket,
-  ) {
-    console.log(data);
-    this.io.emit('hi', 'Hello from NestJS WebSocket Gateway!');
-  }
-  handleConnection(socket: Socket) {
-    console.log('client connected:', socket.id);
-  }
-  handleDisconnect(socket: Socket) {
-    console.log('client disconnected:', socket.id);
-  }
-  //Notification
-  handleProductQuantityChange(productId: Types.ObjectId, quantity: number) {
-    this.io.emit('productQuantityChanged', { productId, quantity });
+import { TokenService } from '../../common/services';
+@WebSocketGateway({ namespace: '/socket', cors: { origin: false } })
+export class SocketGateway implements OnGatewayConnection {
+  constructor(private readonly tokens: TokenService) {}
+  @WebSocketServer() private io: Server;
+  async handleConnection(socket: Socket) {
+    try {
+      const authorization =
+        socket.handshake.auth?.authorization ||
+        socket.handshake.headers.authorization;
+      const [prefix, token] = String(authorization || '').split(' ');
+      const signature = await this.tokens.GetSignature(prefix);
+      if (!signature || !token) throw new Error('Missing credentials');
+      const { user } = await this.tokens.decodedTokenAndFetchUser(
+        token,
+        signature,
+      );
+      await socket.join(user.id);
+    } catch {
+      socket.disconnect(true);
+    }
   }
 }

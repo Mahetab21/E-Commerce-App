@@ -4,8 +4,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CreateBrandDto, QueryDto, UpdateBrandDto } from './brand.dto';
-import { BrandRepository, HUserDocument } from 'src/DB';
-import { S3Service } from 'src/common/services/s3.service';
+import { BrandRepository, HUserDocument } from '../../DB';
+import { S3Service } from '../../common/services/s3.service';
 import { Types } from 'mongoose';
 import { Inject } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
@@ -62,7 +62,7 @@ export class BrandService {
     }
     if (
       name &&
-      (await this.brandRepository.findOne({ name, createdBy: user._id }))
+      (await this.brandRepository.findOne({ name, _id: { $ne: id } }))
     ) {
       throw new ConflictException('Brand with this name already exists');
     }
@@ -134,12 +134,9 @@ export class BrandService {
   //=================== Delete Brand ===================
   async deleteBrand(id: Types.ObjectId, user: HUserDocument) {
     const brand = await this.brandRepository.findOneAndDelete({
-      filter: {
-        _id: id,
-        createdBy: user._id,
-        paranoid: false,
-        deletedAt: { $exists: true },
-      },
+      _id: id,
+      createdBy: user._id,
+      deletedAt: { $exists: true },
     });
     if (!brand) {
       throw new NotFoundException('Brand not found or already deleted');
@@ -151,10 +148,15 @@ export class BrandService {
   }
   //=================== Get All Brands ===================
   async getAllBrands(query: QueryDto) {
-    const { page = 1, limit = 2, search } = query;
+    const { page = 1, limit = 20 } = query;
+    const search = query.search?.replace(
+      /[.*+?^${\}()|[\]\\]/g,
+      (match) => '\\' + match,
+    );
     const { currentPage, countDocument, numberOfPages, docs } =
       await this.brandRepository.paginate({
         filter: {
+          deletedAt: { $exists: false },
           ...(search
             ? {
                 $or: [

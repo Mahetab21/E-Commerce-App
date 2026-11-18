@@ -17,11 +17,11 @@ import {
   QueryDto,
   UpdateCategoryDto,
 } from './category.dto';
-import { TokenTypeEnum, UserRole } from 'src/common/enums';
-import { Auth, User } from 'src/common/decorators';
+import { TokenTypeEnum, UserRole } from '../../common/enums';
+import { Auth, User } from '../../common/decorators';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { fileValidation, multerCloud } from 'src/common/utilits/multer';
-import type { HUserDocument } from 'src/DB';
+import { fileValidation, multerCloud } from '../../common/utilits/multer';
+import type { HUserDocument } from '../../DB';
 import { CategoryService } from './category.service';
 @Controller('Categories')
 export class CategoryController {

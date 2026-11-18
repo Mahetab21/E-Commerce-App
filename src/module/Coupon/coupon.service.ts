@@ -1,11 +1,12 @@
 import {
   ConflictException,
+  BadRequestException,
   Injectable,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { CouponRepository, ProductRepository } from 'src/DB';
-import type { HUserDocument } from 'src/DB';
+import { CouponRepository, ProductRepository } from '../../DB';
+import type { HUserDocument } from '../../DB';
 import { CreateCouponDto, updateCouponDto } from './coupon.dto';
 import { Types } from 'mongoose';
 @Injectable()
@@ -17,8 +18,10 @@ export class CouponService {
   //=================== Create Coupon ===================
   async createCoupon(body: CreateCouponDto, user: HUserDocument) {
     const { code, amount, fromDate, toDate }: CreateCouponDto = body;
+    if (new Date(toDate) <= new Date(fromDate))
+      throw new BadRequestException('toDate must be after fromDate');
     const couponExist = await this.CouponRepository.findOne({
-      filter: { code: code.toLowerCase() },
+      code: code.toLowerCase(),
     });
     if (couponExist) {
       throw new ConflictException('Coupon code already exists');
@@ -42,15 +45,17 @@ export class CouponService {
     user: HUserDocument,
   ) {
     const { code, amount, fromDate, toDate } = couponDto;
-    const coupon = await this.CouponRepository.findOne({
-      filter: { _id: id },
-    });
+    const coupon = await this.CouponRepository.findOne({ _id: id });
     if (!coupon) {
       throw new NotFoundException('Coupon not found');
     }
+    if (
+      new Date(toDate ?? coupon.toDate) <= new Date(fromDate ?? coupon.fromDate)
+    )
+      throw new BadRequestException('toDate must be after fromDate');
     if (code && code.toLowerCase() !== coupon.code.toLowerCase()) {
       const couponExist = await this.CouponRepository.findOne({
-        filter: { code: code.toLowerCase() },
+        code: code.toLowerCase(),
       });
       if (couponExist) {
         throw new ConflictException('Coupon code already exists');

@@ -1,8 +1,9 @@
-import { IsMongoId, IsNotEmpty, IsNumber } from 'class-validator';
+import { IsMongoId, IsNotEmpty, IsInt, Min } from 'class-validator';
 import { Types } from 'mongoose';
 import { Type } from 'class-transformer';
 export class updateQuantityDto {
-  @IsNumber()
+  @IsInt()
+  @Min(1)
   @IsNotEmpty()
   @Type(() => Number)
   quantity: number;

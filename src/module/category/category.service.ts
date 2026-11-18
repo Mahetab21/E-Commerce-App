@@ -4,9 +4,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CreateCategoryDto, QueryDto, UpdateCategoryDto } from './category.dto';
-import { BrandRepository, CategoryRepository } from 'src/DB';
-import type { HUserDocument } from 'src/DB';
-import { S3Service } from 'src/common/services/s3.service';
+import { BrandRepository, CategoryRepository } from '../../DB';
+import type { HUserDocument } from '../../DB';
+import { S3Service } from '../../common/services/s3.service';
 import { Types } from 'mongoose';
 import { randomUUID } from 'crypto';
 @Injectable()
@@ -75,7 +75,7 @@ export class CategoryService {
     }
     if (
       name &&
-      (await this.CategoryRepository.findOne({ name, createdBy: user._id }))
+      (await this.CategoryRepository.findOne({ name, _id: { $ne: id } }))
     ) {
       throw new ConflictException('Category with this name already exists');
     }
@@ -93,7 +93,11 @@ export class CategoryService {
 
     const updatedCategory = await this.CategoryRepository.findOneAndUpdate({
       filter: { _id: id, createdBy: user._id },
-      update: { name, slogan, brands: strictId },
+      update: {
+        name,
+        slogan,
+        ...(brands !== undefined ? { brands: strictId } : {}),
+      },
     });
     return updatedCategory;
   }
@@ -158,7 +162,8 @@ export class CategoryService {
   //=================== Delete Category ===================
   async deleteCategory(id: Types.ObjectId) {
     const Category = await this.CategoryRepository.findOneAndDelete({
-      filter: { _id: id, paranoid: false, deletedAt: { $exists: true } },
+      _id: id,
+      deletedAt: { $exists: true },
     });
     if (!Category) {
       throw new NotFoundException('Category not found or already deleted');
@@ -170,10 +175,15 @@ export class CategoryService {
   }
   //=================== Get All Categories ===================
   async getAllCategories(query: QueryDto) {
-    const { page = 1, limit = 2, search } = query;
+    const { page = 1, limit = 20 } = query;
+    const search = query.search?.replace(
+      /[.*+?^${\}()|[\]\\]/g,
+      (match) => '\\' + match,
+    );
     const { currentPage, countDocument, numberOfPages, docs } =
       await this.CategoryRepository.paginate({
         filter: {
+          deletedAt: { $exists: false },
           ...(search
             ? {
                 $or: [

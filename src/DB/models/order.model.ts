@@ -1,6 +1,6 @@
 import { MongooseModule, Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
-import { OrderStatus, PaymentMethod } from 'src/common/enums/order.enum';
+import { OrderStatus, PaymentMethod } from '../../common/enums/order.enum';
 @Schema({
   timestamps: true,
   toJSON: { virtuals: true },
@@ -8,6 +8,28 @@ import { OrderStatus, PaymentMethod } from 'src/common/enums/order.enum';
   strictQuery: true,
 })
 export class Order {
+  @Prop({
+    type: [
+      {
+        productId: { type: Types.ObjectId, ref: 'Product', required: true },
+        name: String,
+        quantity: Number,
+        unitPrice: Number,
+      },
+    ],
+    required: true,
+  })
+  items: {
+    productId: Types.ObjectId;
+    name: string;
+    quantity: number;
+    unitPrice: number;
+  }[];
+  @Prop({ type: String, default: 'egp' }) currency: string;
+  @Prop({ type: String }) checkoutSessionId?: string;
+  @Prop({ type: String }) refundId?: string;
+  @Prop({ type: Boolean, default: false }) stockReleased: boolean;
+
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   userId: Types.ObjectId;
   @Prop({ type: Types.ObjectId, ref: 'Cart', required: true })
@@ -21,7 +43,7 @@ export class Order {
   @Prop({ type: String, required: true })
   phone: string;
   // eslint-disable-next-line prettier/prettier
-  @Prop({ type: String ,enum : PaymentMethod, required: true })
+  @Prop({ type: String, enum: PaymentMethod, required: true })
   paymentMethod: PaymentMethod;
   @Prop({ type: String, enum: OrderStatus, required: true })
   orderStatus: OrderStatus;

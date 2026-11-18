@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ProductController } from './product.controller';
 import { ProductService } from './product.service';
-import { S3Service, TokenService } from 'src/common/services';
+import { S3Service, TokenService } from '../../common/services';
 import { JwtService } from '@nestjs/jwt';
 import {
   UserModel,
@@ -14,7 +14,7 @@ import {
   ProductRepository,
   SubCategoryRepository,
   subCategoryModel,
-} from 'src/DB';
+} from '../../DB';
 @Module({
   imports: [
     UserModel,

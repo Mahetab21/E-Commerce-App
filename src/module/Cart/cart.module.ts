@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CartController } from './cart.controller';
 import { CartService } from './cart.service';
-import { TokenService } from 'src/common/services';
+import { TokenService } from '../../common/services';
 import {
   UserModel,
   CartModel,
@@ -9,9 +9,8 @@ import {
   CartRepository,
   UserRepository,
   ProductRepository,
-} from 'src/DB';
+} from '../../DB';
 import { JwtService } from '@nestjs/jwt';
-import { SocketGateway } from '../gateway/socket.gateway';
 @Module({
   imports: [UserModel, CartModel, ProductModel],
   controllers: [CartController],
@@ -22,7 +21,6 @@ import { SocketGateway } from '../gateway/socket.gateway';
     TokenService,
     ProductRepository,
     JwtService,
-    SocketGateway,
   ],
 })
 export class CartModule {}

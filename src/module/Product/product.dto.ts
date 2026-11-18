@@ -2,6 +2,7 @@ import {
   IsMongoId,
   IsNotEmpty,
   IsNumber,
+  IsInt,
   IsOptional,
   IsString,
   Max,
@@ -13,7 +14,7 @@ import {
 import { PartialType } from '@nestjs/mapped-types';
 import { Types } from 'mongoose';
 import { Type } from 'class-transformer';
-import { AtLeastOne } from 'src/common/decorators';
+import { AtLeastOne } from '../../common/decorators';
 
 export class ProductVariantDto {
   @IsString()
@@ -30,7 +31,7 @@ export class ProductVariantDto {
   @Type(() => Number)
   price: number;
 
-  @IsNumber()
+  @IsInt()
   @IsNotEmpty()
   @Min(0)
   @Type(() => Number)
@@ -103,15 +104,16 @@ export class CreateProductDto {
   @IsNotEmpty()
   description: string;
 
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
   @IsNotEmpty()
   @Type(() => Number)
   price: number;
 
   @IsNumber()
   @IsNotEmpty()
-  @Min(1)
-  @Max(100)
+  @Min(0)
+  @Max(99)
   @Type(() => Number)
   discount: number;
 
@@ -119,15 +121,15 @@ export class CreateProductDto {
   @IsNotEmpty()
   brand: Types.ObjectId;
 
-  @IsNumber()
+  @IsInt()
   @IsNotEmpty()
-  @Min(1)
+  @Min(0)
   @Type(() => Number)
   quantity: number;
 
-  @IsNumber()
+  @IsInt()
   @IsNotEmpty()
-  @Min(1)
+  @Min(0)
   @Type(() => Number)
   stock: number;
 
@@ -150,12 +152,15 @@ export class idDto {
   id: Types.ObjectId;
 }
 export class QueryDto {
-  @IsNumber()
+  @IsInt()
+  @Min(1)
   @IsOptional()
   @Type(() => Number)
   page?: number;
 
-  @IsNumber()
+  @IsInt()
+  @Min(1)
+  @Max(100)
   @IsOptional()
   @Type(() => Number)
   limit?: number;
@@ -166,7 +171,7 @@ export class QueryDto {
 }
 @AtLeastOne([
   'name',
-  'discription',
+  'description',
   'price',
   'discount',
   'brand',

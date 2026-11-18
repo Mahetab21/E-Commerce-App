@@ -13,15 +13,15 @@ import {
   UploadedFiles,
 } from '@nestjs/common';
 import { ProductService } from './product.service';
-import { TokenTypeEnum, UserRole } from 'src/common/enums';
-import { Auth, User } from 'src/common/decorators';
+import { TokenTypeEnum, UserRole } from '../../common/enums';
+import { Auth, User } from '../../common/decorators';
 import {
   FileFieldsInterceptor,
   FileInterceptor,
   FilesInterceptor,
 } from '@nestjs/platform-express';
-import { fileValidation, multerCloud } from 'src/common/utilits/multer';
-import type { HUserDocument } from 'src/DB';
+import { fileValidation, multerCloud } from '../../common/utilits/multer';
+import type { HUserDocument } from '../../DB';
 import {
   CreateProductDto,
   idDto,
@@ -53,7 +53,7 @@ export class ProductController {
   async createProduct(
     @Body() productDto: CreateProductDto,
     @User() user: HUserDocument,
-    @UploadedFiles(ParseFilePipe)
+    @UploadedFiles()
     files: {
       mainImage: Express.Multer.File[];
       subImages: Express.Multer.File[];
@@ -71,7 +71,7 @@ export class ProductController {
     role: [UserRole.ADMIN],
     tokenType: TokenTypeEnum.access,
   })
-  @Patch(':id')
+  @Patch('update/:id')
   async updateProduct(
     @Param() param: paramDto,
     @Body() body: UpdateProductDto,
@@ -87,7 +87,7 @@ export class ProductController {
   //-------------- Add to wish list--------------
   @Post('wish-list/:id')
   @Auth({
-    role: [UserRole.ADMIN],
+    role: [UserRole.ADMIN, UserRole.USER],
     tokenType: TokenTypeEnum.access,
   })
   async addToWishList(@Param() param: paramDto, @User() user: HUserDocument) {

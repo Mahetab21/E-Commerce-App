@@ -17,9 +17,10 @@ import {
   BrandRepository,
   CategoryRepository,
   UserRepository,
-} from 'src/DB';
-import { HUserDocument, SubCategoryRepository } from 'src/DB';
-import { S3Service } from 'src/common/services/s3.service';
+} from '../../DB';
+import { HUserDocument, SubCategoryRepository } from '../../DB';
+import { S3Service } from '../../common/services/s3.service';
+import { randomUUID } from 'node:crypto';
 import { Types } from 'mongoose';
 @Injectable()
 export class ProductService {
@@ -71,9 +72,14 @@ export class ProductService {
     if (stock > quantity) {
       throw new BadRequestException('stock cannot be greater than quantity');
     }
-    price = price - price * ((discount || 0) / 100);
+    if (!file?.mainImage?.[0])
+      throw new BadRequestException('mainImage is required');
+    if (subCategoryExists.category.toString() !== category.toString())
+      throw new BadRequestException('Subcategory does not belong to category');
+    const basePrice = price;
+    price = Math.round(price * (1 - (discount || 0) / 100) * 100) / 100;
     const filePath = file.mainImage[0];
-    const filesPath = file.subImages;
+    const filesPath = file.subImages || [];
     const mainImageUrl = await this.s3Service.uploadFile({
       file: filePath,
       path: `Categories/${categoryExists.assetFolderId}/Products/mainImage`,
@@ -86,13 +92,14 @@ export class ProductService {
       name,
       description,
       price,
+      basePrice,
       discount,
       quantity,
       stock,
       brand: Types.ObjectId.createFromHexString(brand.toString()),
       category: Types.ObjectId.createFromHexString(category.toString()),
       subCategory: Types.ObjectId.createFromHexString(subCategory.toString()),
-      assetFolderId: subCategoryExists.assetFolderId,
+      assetFolderId: randomUUID(),
       mainImage: mainImageUrl,
       subImage: subImagesUrls,
       variants: variants
@@ -134,45 +141,49 @@ export class ProductService {
         throw new NotFoundException('brand not found');
       }
     }
-    if (price && discount) {
-      price = price - price * (discount / 100);
-    } else if (price) {
-      price = price - price * (product.discount / 100);
-    } else if (discount) {
-      price = product.price - product.price * (discount / 100);
+    const basePrice = price ?? product.basePrice;
+    if (category || productDto.subCategory) {
+      const subCategory = await this.subCategoryRepository.findOne({
+        _id: productDto.subCategory ?? product.subCategory,
+        category: category ?? product.category,
+        deletedAt: { $exists: false },
+      });
+      if (!subCategory)
+        throw new BadRequestException(
+          'Subcategory does not belong to category',
+        );
     }
-    if (stock) {
-      if (stock > product.quantity) {
-        throw new BadRequestException('stock cannot be greater than quantity');
-      }
-    }
+    if (discount !== undefined && basePrice === undefined)
+      throw new BadRequestException(
+        'Provide the undiscounted price when updating a legacy product discount',
+      );
+    const nextDiscount = discount ?? product.discount ?? 0;
+    if (basePrice !== undefined)
+      price = Math.round(basePrice * (1 - nextDiscount / 100) * 100) / 100;
+    if ((stock ?? product.stock) > (quantity ?? product.quantity))
+      throw new BadRequestException('Stock cannot exceed quantity');
     const updatedProduct = await this.productRepository.findOneAndUpdate({
       filter: { _id: id },
       update: {
         ...productDto,
-        price,
-        discount,
-        stock,
-        quantity,
+        ...(price !== undefined ? { price, basePrice } : {}),
+        updatedBy: user._id,
       },
     });
     return updatedProduct;
   }
   //================== Add to wish list ==================
   async addToWishList(id: Types.ObjectId, user: HUserDocument) {
-    const product = await this.productRepository.findOne({
-      filter: { _id: id },
-    });
+    const product = await this.productRepository.findOne({ _id: id });
     if (!product) {
       throw new NotFoundException('product not found');
     }
     let userExists = await this.userRepository.findOneAndUpdate({
-      filter: { _id: user._id, wishList: { $in: id } },
+      filter: { _id: user._id, wishList: { $in: [id] } },
       update: {
         $pull: {
           wishList: id,
         },
-        options: { new: true },
       },
     });
     if (!userExists) {
@@ -196,13 +207,12 @@ export class ProductService {
   ) {
     const Product = await this.productRepository.findOne({
       _id: id,
-      createdBy: user._id,
     });
     if (!Product) {
       throw new NotFoundException('Product not found');
     }
     const url = await this.s3Service.uploadFile({
-      path: `Categories/.../Products/${Product.assetFolderId}/mainImage`,
+      path: `Products/${Product.assetFolderId}/mainImage`,
       file,
     });
     const updatedProduct = await this.productRepository.findOneAndUpdate({
@@ -223,15 +233,20 @@ export class ProductService {
   }
   //=================== Get All Products ===================
   async getAllProducts(query: QueryDto) {
-    const { page = 1, limit = 2, search } = query;
+    const { page = 1, limit = 20 } = query;
+    const search = query.search?.replace(
+      /[.*+?^${\}()|[\]\\]/g,
+      (match) => '\\' + match,
+    );
     const { currentPage, countDocument, numberOfPages, docs } =
       await this.productRepository.paginate({
         filter: {
+          deletedAt: { $exists: false },
           ...(search
             ? {
                 $or: [
                   { name: { $regex: search, $options: 'i' } },
-                  { slogan: { $regex: search, $options: 'i' } },
+                  { description: { $regex: search, $options: 'i' } },
                 ],
               }
             : {}),

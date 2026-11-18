@@ -1,4 +1,4 @@
-import { Model } from 'mongoose';
+import { Model, ClientSession } from 'mongoose';
 import {
   HydratedDocument,
   ProjectionType,
@@ -11,7 +11,11 @@ import {
 
 export class DBRepository<TDocument> {
   constructor(protected readonly model: Model<TDocument>) {}
-  async create(data: Partial<TDocument>): Promise<HydratedDocument<TDocument>> {
+  async create(
+    data: Partial<TDocument>,
+    session?: ClientSession,
+  ): Promise<HydratedDocument<TDocument>> {
+    if (session) return (await this.model.create([data], { session }))[0];
     return this.model.create(data);
   }
   async findOne(
@@ -19,6 +23,8 @@ export class DBRepository<TDocument> {
     select?: ProjectionType<TDocument>,
     options?: QueryOptions<TDocument>,
   ): Promise<HydratedDocument<TDocument> | null> {
+    if (filter && Object.prototype.hasOwnProperty.call(filter, 'filter'))
+      throw new Error('findOne requires a direct MongoDB filter');
     return this.model.findOne(filter, select, options);
   }
   async find({
@@ -49,7 +55,11 @@ export class DBRepository<TDocument> {
     update: UpdateQuery<TDocument>;
     options?: QueryOptions<TDocument>;
   }): Promise<HydratedDocument<TDocument> | null> {
-    return await this.model.findOneAndUpdate(filter, update, { new: true });
+    return await this.model.findOneAndUpdate(filter, update, {
+      new: true,
+      runValidators: true,
+      ...options,
+    });
   }
   async deleteOne(filter: RootFilterQuery<TDocument>): Promise<DeleteResult> {
     return await this.model.deleteOne(filter);
@@ -65,20 +75,13 @@ export class DBRepository<TDocument> {
     projection?: ProjectionType<TDocument>;
     options?: QueryOptions<TDocument>;
   }) {
-    // eslint-disable-next-line prefer-const
-    let { page, limit = 2 } = query;
-
-    if (page < 0) page = 1;
-    page = page * 1 || 1;
-    const skip = (page - 1) * limit;
-    const finalOptions = {
-      ...options,
-      skip,
-      limit,
-    };
-    const count = await this.model.countDocuments({
-      deletedAt: { $exists: false },
-    });
+    const page = Math.max(1, Math.floor(Number(query.page) || 1));
+    const limit = Math.min(
+      100,
+      Math.max(1, Math.floor(Number(query.limit) || 20)),
+    );
+    const finalOptions = { ...options, skip: (page - 1) * limit, limit };
+    const count = await this.model.countDocuments(filter);
     const numberOfPages = Math.ceil(count / limit);
     const docs = await this.model.find(filter, projection, finalOptions);
     return { docs, currentPage: page, countDocument: count, numberOfPages };

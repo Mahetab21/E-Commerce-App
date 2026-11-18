@@ -55,7 +55,7 @@ export class S3Service {
   uploadFile = async ({
     storeType = storageType.memory,
     Bucket = process.env.AWS_BUCKET_NAME!,
-    ACL = 'private' as ObjectCannedACL,
+    ACL,
     path = 'general',
     file,
   }: {
@@ -66,9 +66,10 @@ export class S3Service {
     file: Express.Multer.File;
   }): Promise<string> => {
     this.checkConfiguration();
+    if (!file) throw new BadRequestException('An image file is required');
     const command = new PutObjectCommand({
       Bucket,
-      Key: `${process.env.APPLICATION_NAME}/${path}/${randomUUID()}_${file.originalname}`,
+      Key: `${process.env.APPLICATION_NAME}/${path}/${randomUUID()}_${file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`,
       ACL,
       Body:
         storeType === storageType.memory
@@ -86,7 +87,7 @@ export class S3Service {
   uploadLargeFile = async ({
     storeType = storageType.memory,
     Bucket = process.env.AWS_BUCKET_NAME!,
-    ACL = 'private' as ObjectCannedACL,
+    ACL,
     path = 'general',
     file,
   }: {
@@ -97,11 +98,12 @@ export class S3Service {
     file: Express.Multer.File;
   }): Promise<string> => {
     this.checkConfiguration();
+    if (!file) throw new BadRequestException('An image file is required');
     const upload = new Upload({
       client: this.S3Client,
       params: {
         Bucket,
-        Key: `${process.env.APPLICATION_NAME}/${path}/${randomUUID()}_${file.originalname}`,
+        Key: `${process.env.APPLICATION_NAME}/${path}/${randomUUID()}_${file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`,
         ACL,
         Body:
           storeType === storageType.memory
@@ -124,7 +126,7 @@ export class S3Service {
   uploadFiles = async ({
     storeType = storageType.memory,
     Bucket = process.env.AWS_BUCKET_NAME!,
-    ACL = 'private' as ObjectCannedACL,
+    ACL,
     path = 'general',
     files,
     useLargeFiles = false,
@@ -136,19 +138,23 @@ export class S3Service {
     files: Express.Multer.File[];
     useLargeFiles?: boolean;
   }) => {
-    let urls: string[] = [];
-    if (useLargeFiles === true) {
-      urls = await Promise.all(
-        files.map((file) =>
-          this.uploadLargeFile({ storeType, Bucket, ACL, path, file }),
-        ),
+    files = files || [];
+    const results = await Promise.allSettled(
+      files.map((file) =>
+        useLargeFiles
+          ? this.uploadLargeFile({ storeType, Bucket, ACL, path, file })
+          : this.uploadFile({ storeType, Bucket, ACL, path, file }),
+      ),
+    );
+    const urls = results.flatMap((result) =>
+      result.status === 'fulfilled' ? [result.value] : [],
+    );
+    const failure = results.find((result) => result.status === 'rejected');
+    if (failure?.status === 'rejected') {
+      await Promise.allSettled(
+        urls.map((Key) => this.deleteFile({ Bucket, Key })),
       );
-    } else {
-      urls = await Promise.all(
-        files.map((file) =>
-          this.uploadFile({ storeType, Bucket, ACL, path, file }),
-        ),
-      );
+      throw failure.reason;
     }
     return urls;
   };
@@ -168,7 +174,7 @@ export class S3Service {
   }) => {
     const command = new PutObjectCommand({
       Bucket,
-      Key: `${process.env.APPLICATION_NAME}/${path}/${randomUUID()}_${originalname}`,
+      Key: `${process.env.APPLICATION_NAME}/${path}/${randomUUID()}_${originalname.replace(/[^a-zA-Z0-9._-]/g, '_')}`,
       ContentType,
     });
     const url = await getSignedUrl(this.S3Client, command, { expiresIn });
@@ -182,6 +188,7 @@ export class S3Service {
     Bucket?: string;
     path: string;
   }) => {
+    this.checkConfiguration();
     const command = new GetObjectCommand({
       Bucket,
       Key: path,
@@ -200,6 +207,7 @@ export class S3Service {
     expiresIn?: number;
     downLoadName?: string | undefined;
   }) => {
+    this.checkConfiguration();
     const command = new GetObjectCommand({
       Bucket,
       Key: path,
@@ -218,6 +226,7 @@ export class S3Service {
     Bucket?: string;
     Key: string;
   }) => {
+    this.checkConfiguration();
     const command = new DeleteObjectCommand({
       Bucket,
       Key,
@@ -234,6 +243,8 @@ export class S3Service {
     urls: string[];
     Quiet?: boolean;
   }) => {
+    this.checkConfiguration();
+    if (!urls.length) return;
     const command = new DeleteObjectsCommand({
       Bucket,
       Delete: {

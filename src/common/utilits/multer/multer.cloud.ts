@@ -1,4 +1,4 @@
-import { storageType } from 'src/common/enums';
+import { storageType } from '../../enums';
 import { fileValidation } from './multer.fileValidation';
 import multer from 'multer';
 import os from 'os';
@@ -12,6 +12,7 @@ export const multerCloud = ({
   storeType?: storageType;
 }) => {
   return {
+    limits: { fileSize: 5 * 1024 * 1024, files: 10, fields: 30 },
     storage:
       storeType === storageType.memory
         ? multer.memoryStorage()

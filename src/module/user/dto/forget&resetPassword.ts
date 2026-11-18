@@ -1,4 +1,12 @@
-import { IsEmail, IsNotEmpty, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsStrongPassword,
+  IsString,
+  Matches,
+  IsByteLength,
+} from 'class-validator';
+import { IsMatch } from '../../../common/decorators/user.decorator';
 
 export class ForgotPasswordDto {
   @IsEmail()
@@ -10,12 +18,16 @@ export class ResetPasswordDto {
   email: string;
 
   @IsNotEmpty()
+  @IsString()
+  @Matches(/^\d{6}$/)
   otp: string;
 
   @IsNotEmpty()
-  @MinLength(6)
+  @IsStrongPassword()
+  @IsByteLength(8, 72)
   password: string;
 
   @IsNotEmpty()
+  @IsMatch(['password'])
   cPassword: string;
 }

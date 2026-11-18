@@ -13,11 +13,11 @@ import {
 } from '@nestjs/common';
 import { BrandService } from './brand.service';
 import { CreateBrandDto, idDto, QueryDto, UpdateBrandDto } from './brand.dto';
-import { TokenTypeEnum, UserRole } from 'src/common/enums';
-import { Auth, User } from 'src/common/decorators';
+import { TokenTypeEnum, UserRole } from '../../common/enums';
+import { Auth, User } from '../../common/decorators';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { fileValidation, multerCloud } from 'src/common/utilits/multer';
-import type { HUserDocument } from 'src/DB';
+import { fileValidation, multerCloud } from '../../common/utilits/multer';
+import type { HUserDocument } from '../../DB';
 @Controller('brands')
 export class BrandController {
   constructor(private readonly brandService: BrandService) {}

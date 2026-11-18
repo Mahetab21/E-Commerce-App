@@ -1,5 +1,5 @@
 import {
-  BadRequestException,
+  UnauthorizedException,
   CanActivate,
   ExecutionContext,
   Injectable,
@@ -38,12 +38,12 @@ export class AuthenticationGuard implements CanActivate {
     try {
       const [prefix, token] = authorization?.split(' ') || [];
       if (!token || !prefix) {
-        throw new BadRequestException('Invalid Token');
+        throw new UnauthorizedException('Invalid Token');
       }
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       const signature = await this.tokenService.GetSignature(prefix, typeToken);
       if (!signature) {
-        throw new BadRequestException('Invalid signature');
+        throw new UnauthorizedException('Invalid signature');
       }
       const { user, decoded } =
         await this.tokenService.decodedTokenAndFetchUser(token, signature);
@@ -54,7 +54,7 @@ export class AuthenticationGuard implements CanActivate {
       return true;
     } catch (error: any) {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      throw new BadRequestException(error.message);
+      throw new UnauthorizedException('Invalid or expired credentials');
     }
   }
 }

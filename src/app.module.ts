@@ -1,3 +1,4 @@
+import { validateEnvironment } from './config/environment';
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -5,7 +6,6 @@ import { ConfigModule } from '@nestjs/config';
 import { UserModule } from './module/user/user.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
-import { AuthModule } from './module/auth/auth.module';
 import { S3Service } from './common/services';
 import { BrandModule } from './module/brand/brand.module';
 import { CategoryModule } from './module/category/category.module';
@@ -19,23 +19,21 @@ import { CacheModule } from '@nestjs/cache-manager';
 @Module({
   imports: [
     ConfigModule.forRoot({
-      envFilePath: 'config/.env',
+      envFilePath: ['.env', 'config/.env'],
       isGlobal: true,
+      validate: validateEnvironment,
     }),
     CacheModule.register({
       isGlobal: true,
     }),
     MongooseModule.forRoot(process.env.MONGO_URI as string, {
       onConnectionCreate: (connection: Connection) => {
-        connection.on('connected', () =>
-          console.log(`DB connected successfully on ${process.env.MONGO_URI}`),
-        );
+        connection.on('connected', () => console.log('Database connected'));
         return connection;
       },
     }),
     GatewayModule,
     UserModule,
-    AuthModule,
     BrandModule,
     CategoryModule,
     subCategoryModule,

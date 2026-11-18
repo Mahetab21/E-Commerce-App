@@ -14,13 +14,13 @@ import { VerifyEmailDto } from './dto/verify_email.dto';
 import { SignInDto } from './dto/login.dto';
 // import { ForgotPasswordDto, ResetPasswordDto } from './dto/password';
 // import { GoogleOAuthDto } from './dto/google-oauth.dto';
-import { Auth, User } from 'src/common/decorators';
-import type { HUserDocument } from 'src/DB/models/user.model';
+import { Auth, User } from '../../common/decorators';
+import type { HUserDocument } from '../../DB/models/user.model';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { fileValidation, multerCloud } from 'src/common/utilits/multer';
-import { storageType } from 'src/common/enums/multer.enum';
-import { UserRole } from 'src/common/enums/user.enum';
-import { TokenTypeEnum } from 'src/common/enums/token.enum';
+import { fileValidation, multerCloud } from '../../common/utilits/multer';
+import { storageType } from '../../common/enums/multer.enum';
+import { UserRole } from '../../common/enums/user.enum';
+import { TokenTypeEnum } from '../../common/enums/token.enum';
 import {
   ForgotPasswordDto,
   ResetPasswordDto,
@@ -56,7 +56,7 @@ export class UserController {
   }
 
   //-------get profile -------
-  @Auth()
+  @Auth({ role: [UserRole.USER, UserRole.ADMIN] })
   @Get('getProfile')
   async getProfile(@User() user: HUserDocument) {
     const profile = await this.userService.getProfile(user._id);
@@ -85,19 +85,11 @@ export class UserController {
     return { message: 'file uploaded successfully', url };
   }
   //-------forget password -------
-  @Auth({
-    role: [UserRole.USER],
-    tokenType: TokenTypeEnum.access,
-  })
   @Patch('forgotPassword')
   async forgotPassword(@Body() body: ForgotPasswordDto) {
     return this.userService.forgetPassword(body);
   }
   //-------reset password -------
-  @Auth({
-    role: [UserRole.USER],
-    tokenType: TokenTypeEnum.access,
-  })
   @Patch('resetPassword')
   async resetPassword(@Body() body: ResetPasswordDto) {
     return this.userService.resetPassword(body);

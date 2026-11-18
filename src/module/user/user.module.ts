@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
-import { OtpModel, OtpRepository, UserModel, UserRepository } from 'src/DB';
+import { OtpModel, OtpRepository, UserModel, UserRepository } from '../../DB';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { S3Service, TokenService } from 'src/common/services';
+import { S3Service, TokenService } from '../../common/services';
 @Module({
   imports: [
     UserModel,

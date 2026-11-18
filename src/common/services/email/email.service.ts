@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import nodemailer from 'nodemailer';
 import Mail from 'nodemailer/lib/mailer/index';
 
@@ -23,5 +24,5 @@ export const sendEmail = async (mailOptions: Mail.Options) => {
   console.log('Message sent:', info.messageId);
 };
 export const generateOtp = () => {
-  return Math.floor(Math.random() * (999999 - 100000 + 1) + 100000);
+  return randomInt(100000, 1000000);
 };

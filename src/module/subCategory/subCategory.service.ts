@@ -8,9 +8,13 @@ import {
   QueryDto,
   UpdatesubCategoryDto,
 } from './subCategory.dto';
-import { BrandRepository, SubCategoryRepository } from 'src/DB';
-import type { HUserDocument } from 'src/DB';
-import { S3Service } from 'src/common/services/s3.service';
+import {
+  BrandRepository,
+  SubCategoryRepository,
+  CategoryRepository,
+} from '../../DB';
+import type { HUserDocument } from '../../DB';
+import { S3Service } from '../../common/services/s3.service';
 import { Types } from 'mongoose';
 import { randomUUID } from 'crypto';
 @Injectable()
@@ -19,6 +23,7 @@ export class subCategoryService {
     private readonly subCategoryRepository: SubCategoryRepository,
     private readonly s3Service: S3Service,
     private readonly BrandRepository: BrandRepository,
+    private readonly categoryRepository: CategoryRepository,
   ) {}
   //=================== Create subCategory ===================
   async createsubCategory(
@@ -27,6 +32,14 @@ export class subCategoryService {
     file: Express.Multer.File,
   ) {
     const { name, slogan, brands, category } = subCategorydto;
+    if (
+      !(await this.categoryRepository.findOne({
+        _id: category,
+        deletedAt: { $exists: false },
+      }))
+    ) {
+      throw new NotFoundException('Category not found');
+    }
     const subCategoryExists = await this.subCategoryRepository.findOne({
       name,
     });
@@ -73,6 +86,15 @@ export class subCategoryService {
     user: HUserDocument,
   ) {
     const { name, slogan, brands } = subCategorydto;
+    if (
+      subCategorydto.category &&
+      !(await this.categoryRepository.findOne({
+        _id: subCategorydto.category,
+        deletedAt: { $exists: false },
+      }))
+    ) {
+      throw new NotFoundException('Category not found');
+    }
     const subCategory = await this.subCategoryRepository.findOne({
       _id: id,
       createdBy: user._id,
@@ -82,7 +104,7 @@ export class subCategoryService {
     }
     if (
       name &&
-      (await this.subCategoryRepository.findOne({ name, createdBy: user._id }))
+      (await this.subCategoryRepository.findOne({ name, _id: { $ne: id } }))
     ) {
       throw new ConflictException('subCategory with this name already exists');
     }
@@ -101,7 +123,14 @@ export class subCategoryService {
     const updatedsubCategory =
       await this.subCategoryRepository.findOneAndUpdate({
         filter: { _id: id, createdBy: user._id },
-        update: { name, slogan, brands: strictId },
+        update: {
+          name,
+          slogan,
+          ...(subCategorydto.category
+            ? { category: subCategorydto.category }
+            : {}),
+          ...(brands !== undefined ? { brands: strictId } : {}),
+        },
       });
     return updatedsubCategory;
   }
@@ -167,7 +196,8 @@ export class subCategoryService {
   //=================== Delete subCategory ===================
   async deletesubCategory(id: Types.ObjectId) {
     const subCategory = await this.subCategoryRepository.findOneAndDelete({
-      filter: { _id: id, paranoid: false, deletedAt: { $exists: true } },
+      _id: id,
+      deletedAt: { $exists: true },
     });
     if (!subCategory) {
       throw new NotFoundException('subCategory not found or already deleted');
@@ -179,10 +209,15 @@ export class subCategoryService {
   }
   //=================== Get All subCategories ===================
   async getAllsubCategories(query: QueryDto) {
-    const { page = 1, limit = 2, search } = query;
+    const { page = 1, limit = 20 } = query;
+    const search = query.search?.replace(
+      /[.*+?^${\}()|[\]\\]/g,
+      (match) => '\\' + match,
+    );
     const { currentPage, countDocument, numberOfPages, docs } =
       await this.subCategoryRepository.paginate({
         filter: {
+          deletedAt: { $exists: false },
           ...(search
             ? {
                 $or: [

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { S3Service, TokenService } from 'src/common/services';
+import { S3Service, TokenService } from '../../common/services';
 import {
   UserModel,
   CouponModel,
@@ -11,11 +11,11 @@ import {
   CartModel,
   CartRepository,
   OrderRepository,
-} from 'src/DB';
+} from '../../DB';
 import { JwtService } from '@nestjs/jwt';
 import { OrderController } from './order.controller';
 import { OrderService } from './order.service';
-import { StripeService } from 'src/common/services/email/stripe.service';
+import { StripeService } from '../../common/services/email/stripe.service';
 @Module({
   imports: [UserModel, OrderModel, CartModel, CouponModel, ProductModel],
   controllers: [OrderController],

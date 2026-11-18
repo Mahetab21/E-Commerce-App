@@ -2,13 +2,16 @@ import {
   IsMongoId,
   IsNotEmpty,
   IsNumber,
+  Max,
+  Min,
+  IsInt,
   IsOptional,
   IsString,
   MaxLength,
   MinLength,
 } from 'class-validator';
 import { PartialType } from '@nestjs/mapped-types';
-import { AtLeastOne } from 'src/common/decorators/brand.custom.decorator';
+import { AtLeastOne } from '../../common/decorators/brand.custom.decorator';
 import { Types } from 'mongoose';
 import { Type } from 'class-transformer';
 export class CreateBrandDto {
@@ -38,7 +41,9 @@ export class QueryDto {
   @Type(() => Number) // to transform the query string to number
   page?: number;
 
-  @IsNumber()
+  @IsInt()
+  @Min(0)
+  @Max(99)
   @IsOptional()
   @Type(() => Number)
   limit?: number;

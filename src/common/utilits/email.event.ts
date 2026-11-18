@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import { sendEmail } from '../services/email/email.service';
 import { emailTemplate } from '../services/email/send.temp';
-import { OtpEnumType } from 'src/common/enums';
+import { OtpEnumType } from '../enums';
 export const eventEmitter = new EventEmitter();
 
 // eslint-disable-next-line @typescript-eslint/no-misused-promises

@@ -1,8 +1,8 @@
 import { MongooseModule, Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { UserGender, UserProvider, UserRole } from 'src/common/enums';
+import { UserGender, UserProvider, UserRole } from '../../common/enums';
 import { HydratedDocument, Types } from 'mongoose';
 import type { HOtpDocument } from './otp.model';
-import { Hash } from 'src/common/utilits/hash';
+import { Hash } from '../../common/utilits/hash';
 @Schema({
   timestamps: true,
   toJSON: { virtuals: true },
@@ -58,6 +58,9 @@ export class User {
     default: UserRole.USER,
   })
   role: UserRole;
+
+  @Prop({ type: Number, default: 0 })
+  tokenVersion: number;
   @Prop({
     type: String,
     enum: UserGender,
@@ -97,6 +100,15 @@ export class User {
   wishList: Types.ObjectId[];
 }
 export const UserSchema = SchemaFactory.createForClass(User);
+UserSchema.set('toJSON', {
+  virtuals: true,
+  transform: (_doc, ret) => {
+    delete (ret as any).password;
+    delete (ret as any).otp;
+    delete (ret as any).tokenVersion;
+    return ret;
+  },
+});
 export type HUserDocument = HydratedDocument<User>;
 
 // Add virtuals

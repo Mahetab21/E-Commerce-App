@@ -1,8 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { UnauthorizedException, Injectable } from '@nestjs/common';
 import { JwtService, JwtSignOptions, JwtVerifyOptions } from '@nestjs/jwt';
 import { JwtPayload } from 'jsonwebtoken';
-import { TokenTypeEnum } from 'src/common/enums';
-import { UserRepository } from 'src/DB';
+import { TokenTypeEnum } from '../../enums';
+import { UserRepository } from '../../../DB';
 @Injectable()
 export class TokenService {
   constructor(
@@ -27,7 +27,10 @@ export class TokenService {
     token: string;
     options?: JwtVerifyOptions;
   }): Promise<JwtPayload> => {
-    return this.jwtService.verifyAsync(token, options);
+    return this.jwtService.verifyAsync(token, {
+      ...options,
+      algorithms: ['HS256'],
+    });
   };
   //function to get signature based on token type and prefix
   // eslint-disable-next-line @typescript-eslint/require-await
@@ -59,23 +62,21 @@ export class TokenService {
       token,
       options: { secret: signature },
     });
-    if (!decoded?.email) {
-      throw new BadRequestException('Invalid Token');
+    if (!decoded?.email || !decoded?.id || !Number.isInteger(decoded.version)) {
+      throw new UnauthorizedException('Invalid Token');
     }
-    const user = await this.UserRepo.findOne({ email: decoded.email });
+    const user = await this.UserRepo.findOne({
+      _id: decoded.id,
+      email: decoded.email,
+    });
     if (!user) {
-      throw new BadRequestException('User not found');
+      throw new UnauthorizedException('User not found');
     }
     if (!user?.confirmed) {
-      throw new BadRequestException('Please confirm your email');
+      throw new UnauthorizedException('Please confirm your email');
     }
-    // if(await _revokeToken.findOne({tokenId:decoded?.jti})){
-    //     throw new AppError("Token has been revoked",401)
-    // }
-    // if(user?.changeCredentials?.getTime()! > decoded.iat! * 1000){
-    //     throw new AppError("token has been revoked",401)
-    // }
-
+    if (decoded.version !== user.tokenVersion)
+      throw new UnauthorizedException('Token revoked');
     return { decoded, user };
   };
 }

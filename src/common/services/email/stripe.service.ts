@@ -1,49 +1,62 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import Stripe from 'stripe';
 @Injectable()
 export class StripeService {
-  private stripe = new Stripe(process.env.STRIPE_API_KEY!);
-  constructor() {}
-  createCheckoutSession = async ({
-    line_items,
-    discounts,
-    metadata,
-    customer_email,
-  }: {
-    line_items: [];
-    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-    metadata: {};
-    customer_email: string;
-    discounts?: Stripe.Checkout.SessionCreateParams.Discount[];
-  }) => {
-    const session = await this.stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      mode: 'payment',
-      customer_email,
-      metadata,
-      success_url: 'http://localhost:3000/order/success',
-      cancel_url: 'http://localhost:3000/order/cancel',
-      line_items,
-      discounts,
-    });
-    return session;
-  };
-  createCoupon = async ({ percent_off }: { percent_off: number }) => {
-    const coupon = await this.stripe.coupons.create({
-      percent_off,
-      duration: 'once',
-    });
-    return coupon;
-  };
-  createRefundedPayment = async ({
-    paymentIntent,
-  }: {
-    paymentIntent: string;
-  }) => {
-    const refund = await this.stripe.refunds.create({
-      payment_intent: paymentIntent,
-      reason: 'requested_by_customer',
-    });
-    return refund;
-  };
+  private client?: Stripe;
+  private get stripe() {
+    if (!process.env.STRIPE_API_KEY)
+      throw new ServiceUnavailableException('Payments are not configured');
+    return (this.client ??= new Stripe(process.env.STRIPE_API_KEY));
+  }
+  createCheckoutSession(
+    params: Stripe.Checkout.SessionCreateParams,
+    key: string,
+  ) {
+    if (!process.env.CHECKOUT_SUCCESS_URL || !process.env.CHECKOUT_CANCEL_URL)
+      throw new ServiceUnavailableException('Checkout URLs are not configured');
+    return this.stripe.checkout.sessions.create(
+      {
+        ...params,
+        mode: 'payment',
+        payment_method_types: ['card'],
+        success_url: process.env.CHECKOUT_SUCCESS_URL,
+        cancel_url: process.env.CHECKOUT_CANCEL_URL,
+        expires_at: Math.floor(Date.now() / 1000) + 1800,
+      },
+      { idempotencyKey: key },
+    );
+  }
+  getSession(id: string) {
+    return this.stripe.checkout.sessions.retrieve(id);
+  }
+  expireSession(id: string) {
+    return this.stripe.checkout.sessions.expire(id);
+  }
+  createRefundedPayment(paymentIntent: string, key: string) {
+    return this.stripe.refunds.create(
+      { payment_intent: paymentIntent, reason: 'requested_by_customer' },
+      { idempotencyKey: key },
+    );
+  }
+  verifyWebhook(raw: Buffer | undefined, signature: string | undefined) {
+    if (!process.env.STRIPE_WEBHOOK_SECRET)
+      throw new ServiceUnavailableException(
+        'Webhook verification is not configured',
+      );
+    if (!raw || !signature)
+      throw new BadRequestException('Missing webhook signature or raw body');
+    try {
+      return this.stripe.webhooks.constructEvent(
+        raw,
+        signature,
+        process.env.STRIPE_WEBHOOK_SECRET,
+      );
+    } catch {
+      throw new BadRequestException('Invalid webhook signature');
+    }
+  }
 }

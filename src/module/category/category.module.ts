@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CategoryController } from './category.controller';
 import { CategoryService } from './category.service';
-import { S3Service, TokenService } from 'src/common/services';
+import { S3Service, TokenService } from '../../common/services';
 import { JwtService } from '@nestjs/jwt';
 import {
   UserModel,
@@ -10,7 +10,7 @@ import {
   CategoryModel,
   CategoryRepository,
   BrandRepository,
-} from 'src/DB';
+} from '../../DB';
 @Module({
   imports: [UserModel, BrandModel, CategoryModel],
   controllers: [CategoryController],

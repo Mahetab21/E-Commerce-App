@@ -1,7 +1,7 @@
 import { Body, Controller, Param, Patch, Post } from '@nestjs/common';
-import { TokenTypeEnum, UserRole } from 'src/common/enums';
-import { Auth, User } from 'src/common/decorators';
-import type { HUserDocument } from 'src/DB';
+import { TokenTypeEnum, UserRole } from '../../common/enums';
+import { Auth, User } from '../../common/decorators';
+import type { HUserDocument } from '../../DB';
 import { CreateCouponDto, paramDto, updateCouponDto } from './coupon.dto';
 import { CouponService } from './coupon.service';
 @Controller('Coupons')
@@ -10,7 +10,7 @@ export class CouponController {
   //------- createCoupon -------
   @Post()
   @Auth({
-    role: [UserRole.ADMIN, UserRole.USER],
+    role: [UserRole.ADMIN],
     tokenType: TokenTypeEnum.access,
   })
   async createCoupon(
@@ -23,7 +23,7 @@ export class CouponController {
   //-------- updateCoupon -------
   @Patch(':id')
   @Auth({
-    role: [UserRole.ADMIN, UserRole.USER],
+    role: [UserRole.ADMIN],
     tokenType: TokenTypeEnum.access,
   })
   async updateCoupon(

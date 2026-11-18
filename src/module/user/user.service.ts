@@ -2,37 +2,29 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  UnauthorizedException,
 } from '@nestjs/common';
-import { Compare } from 'src/common/utilits/hash';
-import { VerifyEmailDto } from './dto/verify_email.dto';
-// import { SignInDto } from './dto/login.dto';
-// import { ForgotPasswordDto, ResetPasswordDto } from './dto/password';
-// import { GoogleAuthDto } from './dto/google-oauth.dto';
-// import { OAuth2Client, TokenPayload } from 'google-auth-library';
 import { ConfigService } from '@nestjs/config';
-import { signUpDTO } from './dto/signup.dto';
-// import { v4 as uuidv4 } from 'uuid';
-// import { UserProvider } from 'src/common/enums';
-import { eventEmitter } from 'src/common/utilits/email.event';
-import { generateOtp } from 'src/common/services/email/email.service';
-import { HUserDocument, OtpRepository, UserRepository } from 'src/DB';
-import {
-  OtpEnumType,
-  UserGender,
-  UserProvider,
-  UserRole,
-} from 'src/common/enums';
-import { resendOtpDto } from './dto/verify_email.dto';
 import { Types } from 'mongoose';
+import { OAuth2Client } from 'google-auth-library';
+import { randomUUID } from 'node:crypto';
+import { HUserDocument, OtpRepository, UserRepository } from '../../DB';
+import { OtpEnumType, UserProvider, UserRole } from '../../common/enums';
+import { S3Service, TokenService } from '../../common/services';
+import { Compare } from '../../common/utilits/hash';
+import {
+  generateOtp,
+  sendEmail,
+} from '../../common/services/email/email.service';
+import { signUpDTO } from './dto/signup.dto';
 import { SignInDto } from './dto/login.dto';
-import { S3Service, TokenService } from 'src/common/services';
+import { VerifyEmailDto, resendOtpDto } from './dto/verify_email.dto';
 import {
   ForgotPasswordDto,
   ResetPasswordDto,
 } from './dto/forget&resetPassword';
 import { GoogleOAuthDto } from './dto/google-oauth.dto';
-import { OAuth2Client, TokenPayload } from 'google-auth-library';
-import { v4 as uuidv4 } from 'uuid';
+
 @Injectable()
 export class UserService {
   constructor(
@@ -42,353 +34,243 @@ export class UserService {
     private readonly tokenService: TokenService,
     private readonly configService: ConfigService,
   ) {}
-  private async sendOtp(userId: Types.ObjectId) {
-    const otp = generateOtp();
-    await this.otpRepository.create({
-      code: otp.toString(),
-      createdBy: userId,
-      type: OtpEnumType.CONFIRM_EMAIL,
-      expireAt: new Date(Date.now() + 10 * 60 * 1000),
+
+  private async sendOtp(user: HUserDocument, type: OtpEnumType) {
+    const filter = { createdBy: user._id, type };
+    const existing = await this.otpRepository.findOne(filter);
+    if (existing && existing.expireAt.getTime() > Date.now() + 9 * 60_000) {
+      throw new BadRequestException(
+        'Please wait one minute before requesting another code',
+      );
+    }
+    await this.otpRepository.deleteMany(filter);
+    const code = generateOtp().toString();
+    const record = await this.otpRepository.create({
+      ...filter,
+      code,
+      expireAt: new Date(Date.now() + 10 * 60_000),
+      attempts: 0,
     });
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: type,
+        text: `Your code is ${code}. It expires in 10 minutes.`,
+      });
+    } catch (error) {
+      await this.otpRepository.deleteOne({ _id: record._id });
+      throw error;
+    }
   }
-  //==================== Sign Up ====================
-  async signUp(body: signUpDTO) {
-    const { email, age, firstName, lastName, userName, gender } = body;
-    const existingUser = await this.userRepository.findOne({
-      email: body.email,
+
+  private async consumeOtp(
+    user: HUserDocument,
+    code: string,
+    type: OtpEnumType,
+  ) {
+    const record = await this.otpRepository.findOneAndUpdate({
+      filter: {
+        createdBy: user._id,
+        type,
+        expireAt: { $gt: new Date() },
+        attempts: { $lt: 5 },
+      },
+      update: { $inc: { attempts: 1 } },
     });
-    if (existingUser) {
-      throw new ConflictException('User with this email already exists');
+    if (!record || !(await Compare(code, record.code)))
+      throw new BadRequestException('Invalid or expired code');
+    // Atomically consume it: concurrent requests cannot reuse the same code.
+    const consumed = await this.otpRepository.findOneAndDelete({
+      _id: record._id,
+      expireAt: { $gt: new Date() },
+    });
+    if (!consumed) throw new BadRequestException('Code already used');
+  }
+
+  private async tokens(user: HUserDocument) {
+    const admin = user.role === UserRole.ADMIN;
+    const payload = {
+      email: user.email,
+      id: user._id,
+      version: user.tokenVersion,
+    };
+    return {
+      access_token: await this.tokenService.GenerateToken({
+        payload,
+        options: {
+          secret:
+            process.env[admin ? 'ACCESS_TOKEN_ADMIN' : 'ACCESS_TOKEN_USER'],
+          expiresIn: '15m',
+        },
+      }),
+      refresh_token: await this.tokenService.GenerateToken({
+        payload,
+        options: {
+          secret:
+            process.env[admin ? 'REFRESH_TOKEN_ADMIN' : 'REFRESH_TOKEN_USER'],
+          expiresIn: '7d',
+        },
+      }),
+    };
+  }
+
+  async signUp(body: signUpDTO) {
+    const email = body.email.trim().toLowerCase();
+    if (await this.userRepository.findOne({ email }))
+      throw new ConflictException('Email already registered');
+    const names = body.userName?.trim().split(/\s+/);
+    const firstName = names ? names[0] : body.firstName;
+    const lastName = names ? names.slice(1).join(' ') : body.lastName;
+    if (
+      !firstName ||
+      !lastName ||
+      firstName.length < 2 ||
+      lastName.length < 2
+    ) {
+      throw new BadRequestException('Provide both first and last names');
     }
     const user = await this.userRepository.create({
       email,
       firstName,
       lastName,
-      userName,
-      age,
-      password: body.password, // Remove manual hashing - pre-save middleware handles this
+      age: body.age,
+      password: body.password,
+      gender: body.gender,
+      role: UserRole.USER,
       confirmed: false,
-      gender: gender ?? UserGender.MALE,
-      role: body.role ?? UserRole.USER,
     });
-    if (!user) {
-      throw new BadRequestException('Failed to create user');
-    }
-    const otp = generateOtp().toString();
-    eventEmitter.emit('confirmEmail', { email: body.email, otp });
-    await this.sendOtp(user._id);
-    return {
-      message: 'User created successfully',
-      user,
-    };
+    await this.sendOtp(user, OtpEnumType.CONFIRM_EMAIL);
+    return { message: 'Account created; check your email', user };
   }
-  //==================== Resend OTP ====================
+
   async resendOtp(body: resendOtpDto) {
-    const { email } = body;
-    const user = await this.userRepository.findOne(
-      { email, confirmed: false },
-      undefined,
-      {
-        populate: {
-          path: 'otp',
-        },
-      },
-    );
-    if (!user) {
-      throw new BadRequestException('User not found or already confirmed');
-    }
-    if (user.otp && user.otp.expireAt > new Date()) {
-      throw new BadRequestException('OTP already sent');
-    }
-
-    await this.sendOtp(user._id);
+    const user = await this.userRepository.findOne({
+      email: body.email.trim().toLowerCase(),
+      confirmed: false,
+    });
+    if (user) await this.sendOtp(user, OtpEnumType.CONFIRM_EMAIL);
     return {
-      message: 'OTP resent successfully',
+      message: 'If the account needs confirmation, a code has been sent',
     };
   }
-  //==================== confirm Email ===============
+
   async confirmEmail(body: VerifyEmailDto) {
-    const { email, code } = body;
-    const user = await this.userRepository.findOne(
-      {
-        email,
-        confirmed: false,
-      },
-      undefined,
-      {
-        populate: {
-          path: 'otp',
-        },
-      },
-    );
-    if (!user) {
-      throw new BadRequestException('User not found or already confirmed');
-    }
-    console.log('Code from user:', code);
-    console.log('OTP from DB:', user.otp);
-
-    if (
-      !user.otp ||
-      user.otp.expireAt < new Date() ||
-      !(await Compare(code, user.otp.code))
-    ) {
-      throw new BadRequestException('Invalid or expired OTP');
-    }
-
+    const user = await this.userRepository.findOne({
+      email: body.email.trim().toLowerCase(),
+      confirmed: false,
+    });
+    if (!user) throw new BadRequestException('Invalid or expired code');
+    await this.consumeOtp(user, body.code, OtpEnumType.CONFIRM_EMAIL);
     user.confirmed = true;
     await user.save();
-    await this.otpRepository.deleteOne({
-      createdBy: user._id,
-    });
-    return {
-      message: 'Email confirmed successfully',
-    };
+    return { message: 'Email confirmed successfully' };
   }
-  //==================== sign In ====================
-  async signIn(body: SignInDto) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { email, password } = body;
-    const user = await this.userRepository.findOne({
-      email: body.email,
-      confirmed: true,
-    });
-    if (!user) {
-      throw new BadRequestException('Invalid email or unconfirmed account');
-    }
-    if (!(await Compare(body.password, user.password))) {
-      throw new BadRequestException('Invalid password');
-    }
-    const access_token = await this.tokenService.GenerateToken({
-      payload: { email, id: user._id },
-      options: {
-        secret:
-          user.role == UserRole.USER
-            ? process.env.ACCESS_TOKEN_USER!
-            : process.env.ACCESS_TOKEN_ADMIN!,
-        expiresIn: '1d',
-      },
-    });
-    const refresh_token = await this.tokenService.GenerateToken({
-      payload: { email, id: user._id },
-      options: {
-        secret:
-          user.role == UserRole.USER
-            ? process.env.REFRESH_TOKEN_USER!
-            : process.env.REFRESH_TOKEN_ADMIN!,
-        expiresIn: '1y',
-      },
-    });
 
-    return {
-      message: 'User logged in successfully',
-      access_token,
-      refresh_token,
-    };
+  async signIn(body: SignInDto) {
+    const user = await this.userRepository.findOne({
+      email: body.email.trim().toLowerCase(),
+      confirmed: true,
+      provider: UserProvider.LOCAL,
+    });
+    if (!user || !(await Compare(body.password, user.password)))
+      throw new UnauthorizedException('Invalid credentials');
+    return { message: 'Signed in', ...(await this.tokens(user)) };
   }
-  //==================== Refresh Token ====================
-  async refreshToken(refresh_token: string) {
-    let decoded: any;
-    let userRole: UserRole;
-    try {
-      decoded = await this.tokenService.VerifyToken({
-        token: refresh_token,
-        options: { secret: process.env.REFRESH_TOKEN_USER! },
-      });
-      userRole = UserRole.USER;
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (error) {
+
+  async refreshToken(token: string) {
+    if (!token || typeof token !== 'string')
+      throw new UnauthorizedException('Invalid refresh token');
+    for (const role of [UserRole.USER, UserRole.ADMIN]) {
       try {
-        decoded = await this.tokenService.VerifyToken({
-          token: refresh_token,
-          options: { secret: process.env.REFRESH_TOKEN_ADMIN! },
-        });
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        userRole = UserRole.ADMIN;
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (err) {
-        throw new BadRequestException('Invalid or expired refresh token');
+        const secret =
+          process.env[
+            role === UserRole.ADMIN
+              ? 'REFRESH_TOKEN_ADMIN'
+              : 'REFRESH_TOKEN_USER'
+          ];
+        const { user } = await this.tokenService.decodedTokenAndFetchUser(
+          token,
+          secret!,
+        );
+        if (user.role !== role) continue;
+        return { message: 'Token refreshed', ...(await this.tokens(user)) };
+      } catch {
+        /* Try the other role's signing key. */
       }
     }
-
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    if (!decoded?.email || !decoded?.id) {
-      throw new BadRequestException('Invalid refresh token');
-    }
-
-    // Get the user to ensure they still exist and are confirmed
-    const user = await this.userRepository.findOne({
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      _id: decoded.id as string,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      email: decoded.email as string,
-      confirmed: true,
-    });
-
-    if (!user) {
-      throw new BadRequestException('User not found or not confirmed');
-    }
-
-    // Generate new access token using user's actual role
-    const access_token = await this.tokenService.GenerateToken({
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-      payload: { email: decoded.email, id: user._id },
-      options: {
-        secret:
-          user.role == UserRole.USER
-            ? process.env.ACCESS_TOKEN_USER!
-            : process.env.ACCESS_TOKEN_ADMIN!,
-        expiresIn: '1d',
-      },
-    });
-
-    // Generate new refresh token using user's actual role
-    const new_refresh_token = await this.tokenService.GenerateToken({
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-      payload: { email: decoded.email, id: user._id },
-      options: {
-        secret:
-          user.role == UserRole.USER
-            ? process.env.REFRESH_TOKEN_USER!
-            : process.env.REFRESH_TOKEN_ADMIN!,
-        expiresIn: '1y',
-      },
-    });
-
-    return {
-      message: 'Token refreshed successfully',
-      access_token,
-      refresh_token: new_refresh_token,
-    };
+    throw new UnauthorizedException('Invalid or expired refresh token');
   }
-  //==================== upload file ====================
-  uploadFile(file: Express.Multer.File, user: HUserDocument) {
-    return this.s3Service.uploadFile({
-      file,
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      path: `users/${user._id}`,
-    });
-  }
-  //==================== forget Password ====================
+
   async forgetPassword(body: ForgotPasswordDto) {
-    const { email } = body;
     const user = await this.userRepository.findOne({
-      email,
-      confirmed: { $exists: true },
+      email: body.email.trim().toLowerCase(),
+      confirmed: true,
+      provider: UserProvider.LOCAL,
     });
-    if (!user) {
-      throw new BadRequestException('User not found');
-    }
-    const otp = generateOtp().toString();
-    // Remove manual emission - the OTP model's post-save hook handles this
-    await this.otpRepository.create({
-      code: otp,
-      createdBy: user._id,
-      type: OtpEnumType.FORGET_PASSWORD,
-      expireAt: new Date(Date.now() + 10 * 60 * 1000),
-    });
-    return {
-      message: 'OTP sent to email successfully',
-    };
+    if (user) await this.sendOtp(user, OtpEnumType.FORGET_PASSWORD);
+    return { message: 'If the account exists, a reset code has been sent' };
   }
-  //===================== reset Password =====================
+
   async resetPassword(body: ResetPasswordDto) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { email, otp, password, cPassword } = body;
     const user = await this.userRepository.findOne({
-      email,
+      email: body.email.trim().toLowerCase(),
+      confirmed: true,
+      provider: UserProvider.LOCAL,
     });
-    if (!user) {
-      throw new BadRequestException('User not found');
-    }
-    const existingOtp = await this.otpRepository.findOne({
-      createdBy: user._id,
-      type: OtpEnumType.FORGET_PASSWORD,
-    });
-    console.log('OTP BEFORE COMPARE:', otp);
-    console.log('OTP TYPE:', typeof otp);
-    console.log('DB HASH:', existingOtp?.code);
-    console.log('DB TYPE:', typeof existingOtp?.code);
-    if (!existingOtp || !(await Compare(otp, existingOtp.code))) {
-      throw new BadRequestException('Invalid OTP');
-    }
-    await this.userRepository.updateOne(
-      { email: user?.email },
-      { password: password, $unset: { otp: '' } },
-    );
-    await this.otpRepository.deleteOne({
-      createdBy: user._id,
-      type: OtpEnumType.FORGET_PASSWORD,
-    });
+    if (!user) throw new BadRequestException('Invalid or expired code');
+    await this.consumeOtp(user, body.otp, OtpEnumType.FORGET_PASSWORD);
+    user.password = body.password;
+    user.tokenVersion = (user.tokenVersion || 0) + 1;
+    user.changeCredentials = new Date();
+    await user.save(); // Runs the password hashing hook.
     return { message: 'Password reset successfully' };
   }
-  //==================== Google OAuth Sign In/Up ====================
+
   async signInWithGoogle(body: GoogleOAuthDto) {
-    const { idToken } = body;
-    const client = new OAuth2Client();
-    async function verify() {
-      const ticket = await client.verifyIdToken({
-        idToken,
-        audience: process.env.WEB_CLIENT_ID!,
-      });
-      const payload = ticket.getPayload();
-      return payload;
-    }
-    const { email, email_verified, picture, name } =
-      (await verify()) as TokenPayload;
-    //check email
+    const audience = this.configService.get<string>('WEB_CLIENT_ID');
+    if (!audience)
+      throw new BadRequestException('Google sign-in is not configured');
+    const ticket = await new OAuth2Client().verifyIdToken({
+      idToken: body.idToken,
+      audience,
+    });
+    const payload = ticket.getPayload();
+    if (!payload?.email || !payload.email_verified)
+      throw new UnauthorizedException('Verified Google email required');
+    const email = payload.email.toLowerCase();
     let user = await this.userRepository.findOne({ email });
     if (!user) {
+      if (!body.firstName || !body.lastName || !body.age)
+        throw new BadRequestException(
+          'First sign-in requires firstName, lastName and age',
+        );
       user = await this.userRepository.create({
-        email: email!,
-        image: picture!,
-        confirmed: email_verified!,
-        userName: name!,
-        password: uuidv4(),
+        email,
+        firstName: body.firstName,
+        lastName: body.lastName,
+        age: body.age,
+        image: payload.picture,
+        password: randomUUID(),
+        confirmed: true,
         provider: UserProvider.GOOGLE,
+        role: UserRole.USER,
       });
     }
-    if (user?.provider === UserProvider.LOCAL) {
-      throw new BadRequestException(
-        'Email already registered with system. Please use normal login.',
-      );
-    }
-    const access_token = await this.tokenService.GenerateToken({
-      payload: { email, id: user._id },
-      options: {
-        secret:
-          user.role == UserRole.USER
-            ? process.env.ACCESS_TOKEN_USER!
-            : process.env.ACCESS_TOKEN_ADMIN!,
-        expiresIn: '1d',
-      },
-    });
-
-    const refresh_token = await this.tokenService.GenerateToken({
-      payload: { email, id: user._id },
-      options: {
-        secret:
-          user.role == UserRole.USER
-            ? process.env.REFRESH_TOKEN_USER!
-            : process.env.REFRESH_TOKEN_ADMIN!,
-        expiresIn: '1y',
-      },
-    });
+    if (user.provider !== UserProvider.GOOGLE)
+      throw new BadRequestException('Please use password sign-in');
     return {
-      message: 'User logged in with google successfully',
-      access_token,
-      refresh_token,
+      message: 'Signed in with Google',
+      ...(await this.tokens(user)),
       user,
     };
   }
-  //==================== get Profile ====================
+
+  uploadFile(file: Express.Multer.File, user: HUserDocument) {
+    if (!file) throw new BadRequestException('An image attachment is required');
+    return this.s3Service.uploadFile({ file, path: `users/${user._id}` });
+  }
+
   async getProfile(userId: Types.ObjectId) {
-    const user = await this.userRepository.findOne(
-      { _id: userId },
-      '-password', // Exclude password field
-    );
-    if (!user) {
-      throw new BadRequestException('User not found');
-    }
-    return user;
+    return this.userRepository.findOne({ _id: userId }, '-password');
   }
 }

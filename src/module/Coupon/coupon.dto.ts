@@ -13,8 +13,8 @@ import {
   Validate,
 } from 'class-validator';
 import { Types } from 'mongoose';
-import { AtLeastOne } from 'src/common/decorators';
-import { CouponValidator } from 'src/common/decorators/coupon.custom';
+import { AtLeastOne } from '../../common/decorators';
+import { CouponValidator } from '../../common/decorators/coupon.custom';
 
 export class CreateCouponDto {
   @IsString()
@@ -26,7 +26,7 @@ export class CreateCouponDto {
   @IsNumber()
   @IsNotEmpty()
   @Min(1)
-  @Max(100)
+  @Max(99)
   @IsPositive()
   amount: number;
 

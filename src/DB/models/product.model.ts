@@ -16,7 +16,7 @@ export class ProductVariant {
   @Prop({ type: Number, required: true, min: 0 })
   stock: number;
 
-  @Prop({ type: String, required: true, unique: true })
+  @Prop({ type: String, required: true })
   sku: string;
 
   @Prop({ type: [String], default: [] })
@@ -73,13 +73,16 @@ export class Product {
   @Prop({ type: Number, required: true })
   price: number;
 
+  @Prop({ type: Number, min: 0 })
+  basePrice?: number;
+
   @Prop({ type: Number, min: 0, max: 100 })
   discount: number;
 
-  @Prop({ type: Number, min: 1 })
+  @Prop({ type: Number, min: 0, validate: Number.isSafeInteger })
   quantity: number;
 
-  @Prop({ type: Number, min: 1 })
+  @Prop({ type: Number, min: 0, validate: Number.isSafeInteger })
   stock: number;
 
   @Prop({ type: Number })

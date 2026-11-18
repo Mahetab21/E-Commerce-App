@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CouponController } from './coupon.controller';
 import { CouponService } from './coupon.service';
-import { TokenService } from 'src/common/services';
+import { TokenService } from '../../common/services';
 import {
   UserModel,
   CouponModel,
@@ -9,7 +9,7 @@ import {
   CouponRepository,
   UserRepository,
   ProductRepository,
-} from 'src/DB';
+} from '../../DB';
 import { JwtService } from '@nestjs/jwt';
 @Module({
   imports: [UserModel, CouponModel, ProductModel],

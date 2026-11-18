@@ -2,17 +2,18 @@ import {
   IsEmail,
   IsEnum,
   IsNotEmpty,
-  IsNumber,
+  IsInt,
   IsOptional,
   IsString,
   IsStrongPassword,
+  IsByteLength,
   Length,
   Max,
   Min,
   ValidateIf,
 } from 'class-validator';
 import { IsMatch } from '../../../common/decorators/user.decorator';
-import { UserGender, UserRole } from 'src/common/enums/user.enum';
+import { UserGender } from '../../../common/enums/user.enum';
 export class signUpDTO {
   @IsString()
   @Length(2, 30)
@@ -31,7 +32,7 @@ export class signUpDTO {
   email: string;
 
   @IsNotEmpty()
-  @IsNumber()
+  @IsInt()
   @Min(18)
   @Max(100)
   age: number;
@@ -43,6 +44,7 @@ export class signUpDTO {
   userName: string;
 
   @IsStrongPassword()
+  @IsByteLength(8, 72)
   @IsNotEmpty()
   password: string;
 
@@ -54,8 +56,4 @@ export class signUpDTO {
   @IsEnum(UserGender)
   @IsOptional()
   gender?: UserGender;
-
-  @IsEnum(UserRole)
-  @IsOptional()
-  role?: UserRole;
 }

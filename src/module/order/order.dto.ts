@@ -6,7 +6,7 @@ import {
   IsString,
 } from 'class-validator';
 import { Types } from 'mongoose';
-import { PaymentMethod } from 'src/common/enums/order.enum';
+import { PaymentMethod } from '../../common/enums/order.enum';
 
 export class CreateOrderDto {
   @IsString()
