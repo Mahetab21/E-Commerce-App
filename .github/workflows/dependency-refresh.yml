@@ -13,8 +13,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Resolve compatible security updates without running package scripts
-        run: npm audit fix --package-lock-only --ignore-scripts --no-fund || true
+      - name: Resolve compatible updates and supported mail transport
+        run: |
+          npm update --package-lock-only --ignore-scripts --no-fund
+          npm install nodemailer@^10.6.0 --package-lock-only --ignore-scripts --no-fund
       - name: Report remaining advisories and candidate manifests for review
         run: |
           npm audit --json > dependency-audit.json || true
